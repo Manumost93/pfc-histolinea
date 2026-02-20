@@ -416,3 +416,13 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# SQLite local dev database
+*.db
+*.db-shm
+*.db-wal
+
+# EF Core / build
+**/bin/
+**/obj/
+*.deb
