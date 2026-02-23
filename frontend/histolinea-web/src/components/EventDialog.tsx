@@ -7,6 +7,7 @@ import {
   DialogTitle,
   Stack,
   TextField,
+  CircularProgress,
 } from "@mui/material";
 import type { HistoricalEvent } from "../types/HistoricalEvent";
 
@@ -18,8 +19,8 @@ type Props = {
   onSubmit: (payload: {
     title: string;
     description: string | null;
-    startDate: string; // ISO string para backend
-    endDate: string | null; // ISO o null
+    startDate: string;
+    endDate: string | null;
     imageUrl: string | null;
     sourceUrl: string | null;
   }) => Promise<void>;
@@ -39,11 +40,19 @@ export default function EventDialog({
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [startDate, setStartDate] = useState(""); // yyyy-mm-dd
-  const [endDate, setEndDate] = useState(""); // yyyy-mm-dd
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const [errors, setErrors] = useState({
+    title: "",
+    startDate: "",
+    endDate: "",
+    imageUrl: "",
+    sourceUrl: "",
+  });
 
   useEffect(() => {
     if (!open) return;
@@ -54,6 +63,14 @@ export default function EventDialog({
     setEndDate(initial?.endDate ?? "");
     setImageUrl(initial?.imageUrl ?? "");
     setSourceUrl(initial?.sourceUrl ?? "");
+
+    setErrors({
+      title: "",
+      startDate: "",
+      endDate: "",
+      imageUrl: "",
+      sourceUrl: "",
+    });
   }, [open, initial]);
 
   function toIso(dateOnly: string) {
@@ -61,15 +78,44 @@ export default function EventDialog({
     return `${dateOnly}T00:00:00`;
   }
 
-  async function handleSave() {
+  function validate() {
+    const newErrors = {
+      title: "",
+      startDate: "",
+      endDate: "",
+      imageUrl: "",
+      sourceUrl: "",
+    };
+
     if (!title.trim()) {
-      alert("El título es obligatorio");
-      return;
+      newErrors.title = "El título es obligatorio";
     }
+
     if (!startDate) {
-      alert("La fecha de inicio es obligatoria");
-      return;
+      newErrors.startDate = "La fecha de inicio es obligatoria";
     }
+
+    if (endDate && startDate && endDate < startDate) {
+      newErrors.endDate = "La fecha fin no puede ser anterior a inicio";
+    }
+
+    const urlRegex = /^https?:\/\/.+/i;
+
+    if (imageUrl && !urlRegex.test(imageUrl)) {
+      newErrors.imageUrl = "URL no válida";
+    }
+
+    if (sourceUrl && !urlRegex.test(sourceUrl)) {
+      newErrors.sourceUrl = "URL no válida";
+    }
+
+    setErrors(newErrors);
+
+    return !Object.values(newErrors).some(Boolean);
+  }
+
+  async function handleSave() {
+    if (!validate()) return;
 
     setSaving(true);
     try {
@@ -99,6 +145,8 @@ export default function EventDialog({
             onChange={(e) => setTitle(e.target.value)}
             autoFocus
             fullWidth
+            error={!!errors.title}
+            helperText={errors.title}
           />
 
           <TextField
@@ -118,6 +166,8 @@ export default function EventDialog({
               onChange={(e) => setStartDate(e.target.value)}
               InputLabelProps={{ shrink: true }}
               fullWidth
+              error={!!errors.startDate}
+              helperText={errors.startDate}
             />
             <TextField
               label="Fin"
@@ -126,6 +176,8 @@ export default function EventDialog({
               onChange={(e) => setEndDate(e.target.value)}
               InputLabelProps={{ shrink: true }}
               fullWidth
+              error={!!errors.endDate}
+              helperText={errors.endDate}
             />
           </Stack>
 
@@ -134,6 +186,8 @@ export default function EventDialog({
             value={imageUrl}
             onChange={(e) => setImageUrl(e.target.value)}
             fullWidth
+            error={!!errors.imageUrl}
+            helperText={errors.imageUrl}
           />
 
           <TextField
@@ -141,6 +195,8 @@ export default function EventDialog({
             value={sourceUrl}
             onChange={(e) => setSourceUrl(e.target.value)}
             fullWidth
+            error={!!errors.sourceUrl}
+            helperText={errors.sourceUrl}
           />
         </Stack>
       </DialogContent>
@@ -149,8 +205,20 @@ export default function EventDialog({
         <Button onClick={onClose} disabled={saving}>
           Cancelar
         </Button>
-        <Button onClick={handleSave} variant="contained" disabled={saving}>
-          {mode === "create" ? "Crear" : "Guardar"}
+
+        <Button
+          onClick={handleSave}
+          variant="contained"
+          disabled={saving}
+          startIcon={
+            saving ? <CircularProgress size={18} color="inherit" /> : undefined
+          }
+        >
+          {saving
+            ? "Guardando..."
+            : mode === "create"
+            ? "Crear"
+            : "Guardar"}
         </Button>
       </DialogActions>
     </Dialog>
