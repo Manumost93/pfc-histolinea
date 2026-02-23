@@ -426,3 +426,10 @@ FodyWeavers.xsd
 **/bin/
 **/obj/
 *.deb
+
+
+node_modules/
+dist/
+bin/
+obj/
+.env
