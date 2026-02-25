@@ -28,8 +28,37 @@ type EventPayload = {
   sourceUrl: string | null;
 };
 
+type EraKey = "ancient" | "medieval" | "modern" | "contemporary";
+
 function escapeHtml(s: string) {
   return s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+}
+
+function escapeAttr(s: string) {
+  return s
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+function yearFromDateOnly(dateOnly: string): number | null {
+  // dateOnly esperado "YYYY-MM-DD"
+  if (!dateOnly || dateOnly.length < 4) return null;
+  const y = Number(dateOnly.slice(0, 4));
+  return Number.isFinite(y) ? y : null;
+}
+
+function getEra(year: number): { key: EraKey; label: string; className: string; dot: string } {
+  // Criterio simple (ajustable):
+  // Antigua: < 476
+  // Medieval: 476 - 1491
+  // Moderna: 1492 - 1788
+  // Contemporánea: >= 1789
+  if (year < 476) return { key: "ancient", label: "Antigua", className: "era-ancient", dot: "rgba(46,125,50,0.9)" };
+  if (year < 1492) return { key: "medieval", label: "Medieval", className: "era-medieval", dot: "rgba(109,76,65,0.95)" };
+  if (year < 1789) return { key: "modern", label: "Moderna", className: "era-modern", dot: "rgba(21,101,192,0.9)" };
+  return { key: "contemporary", label: "Contemporánea", className: "era-contemporary", dot: "rgba(106,27,154,0.9)" };
 }
 
 export default function TimelinePage() {
@@ -45,11 +74,11 @@ export default function TimelinePage() {
   const [editOpen, setEditOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
 
-  const [deleteDialog, setDeleteDialog] = useState<{
-    open: boolean;
-    id: string | null;
-    title: string;
-  }>({ open: false, id: null, title: "" });
+  const [deleteDialog, setDeleteDialog] = useState({
+    open: false,
+    id: null as string | null,
+    title: "",
+  });
 
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -63,8 +92,8 @@ export default function TimelinePage() {
       setEvents(res.data);
     } catch (err) {
       console.error(err);
-      setSnackbar({ open: true, severity: "error", message: "Error cargando eventos" });
       setEvents([]);
+      setSnackbar({ open: true, severity: "error", message: "Error cargando eventos" });
     }
   }
 
@@ -76,7 +105,7 @@ export default function TimelinePage() {
     eventsRef.current = events;
   }, [events]);
 
-  // Create timeline once
+  // Crear timeline una sola vez
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -87,10 +116,8 @@ export default function TimelinePage() {
       stack: true,
       horizontalScroll: true,
       zoomKey: "ctrlKey",
-      maxHeight: 470,
-      zoomMin: 1000 * 60 * 60 * 24 * 30,
-      zoomMax: 1000 * 60 * 60 * 24 * 365 * 800,
-      margin: { item: 10 },
+      maxHeight: 540,
+      margin: { item: 12 },
     });
 
     timeline.on("select", (props: any) => {
@@ -113,39 +140,87 @@ export default function TimelinePage() {
     };
   }, []);
 
-  // Items: show thumbnail + title (HTML)
+  // Groups por época
+  const groups = useMemo(() => {
+    const ds = new DataSet([
+      { id: "ancient", content: "Antigua", className: "era-ancient" },
+      { id: "medieval", content: "Medieval", className: "era-medieval" },
+      { id: "modern", content: "Moderna", className: "era-modern" },
+      { id: "contemporary", content: "Contemporánea", className: "era-contemporary" },
+    ]);
+    return ds;
+  }, []);
+
+  // Items con miniatura uniforme + marcador (dot) + tooltip con imagen grande
   const items = useMemo(() => {
     return new DataSet(
       events.map((e) => {
+        const y = yearFromDateOnly(e.startDate) ?? 0;
+        const era = getEra(y);
+
         const title = escapeHtml(e.title);
-        const hasImg = !!e.imageUrl;
-        const img = hasImg
-          ? `<img src="${e.imageUrl}" style="width:22px;height:22px;border-radius:6px;object-fit:cover;border:1px solid rgba(122,79,42,0.25);" />`
-          : `<span style="width:22px;height:22px;border-radius:6px;display:inline-block;background:rgba(122,79,42,0.18);border:1px solid rgba(122,79,42,0.25)"></span>`;
+        const safeUrl = e.imageUrl ? escapeAttr(e.imageUrl) : null;
+
+        // Thumbnail fijo 34x34 (uniforme)
+        const thumb = safeUrl
+          ? `
+            <span style="width:34px;height:34px;display:inline-block;flex:0 0 34px;border-radius:8px;overflow:hidden;border:1px solid rgba(122,79,42,0.25);background:rgba(122,79,42,0.08)">
+              <img src="${safeUrl}" style="width:100%;height:100%;display:block;object-fit:cover;" />
+            </span>
+          `
+          : `
+            <span style="width:34px;height:34px;border-radius:8px;display:inline-block;flex:0 0 34px;background:rgba(122,79,42,0.18);border:1px solid rgba(122,79,42,0.25)"></span>
+          `;
+
+        // Marker dot (mejor “punto” visual)
+        const dot = `
+          <span style="width:10px;height:10px;border-radius:999px;display:inline-block;background:${era.dot};box-shadow:0 0 0 3px rgba(255,255,255,0.9);border:1px solid rgba(0,0,0,0.08)"></span>
+        `;
 
         const content = `
-          <div style="display:flex;align-items:center;gap:8px;line-height:1;">
-            ${img}
-            <span style="font-weight:700;">${title}</span>
+          <div style="display:flex;align-items:center;gap:10px;">
+            ${dot}
+            ${thumb}
+            <span style="font-weight:800;line-height:1.1;">${title}</span>
+          </div>
+        `;
+
+        const tooltip = `
+          <div style="max-width:360px;">
+            ${
+              safeUrl
+                ? `<img src="${safeUrl}" style="width:100%;height:170px;object-fit:cover;border-radius:12px;display:block;margin-bottom:10px;" />`
+                : ""
+            }
+            <div style="font-weight:900;margin-bottom:6px;">${title}</div>
+            <div style="opacity:.85;">${escapeHtml(e.description || "Sin descripción")}</div>
+            <div style="margin-top:10px;opacity:.75;font-size:12px;">
+              <b>${escapeHtml(e.startDate)}</b>${e.endDate ? " → <b>" + escapeHtml(e.endDate) + "</b>" : ""}
+              · Época: <b>${escapeHtml(era.label)}</b>
+            </div>
           </div>
         `;
 
         return {
           id: e.id,
+          group: era.key,
+          className: era.className, // colorea borde según época
           content,
           start: e.startDate,
           end: e.endDate || undefined,
-          title: escapeHtml(e.description || e.title),
+          title: tooltip,
         };
       })
     );
   }, [events]);
 
+  // Aplicar groups + items al timeline
   useEffect(() => {
     if (!timelineRef.current) return;
+    timelineRef.current.setGroups(groups);
     timelineRef.current.setItems(items);
     if (events.length > 0) timelineRef.current.fit({ animation: { duration: 250 } });
-  }, [items, events.length]);
+  }, [groups, items, events.length]);
 
   function openCreate() {
     setSelected(null);
@@ -170,13 +245,25 @@ export default function TimelinePage() {
       await http.delete(`/api/Events/${deleteDialog.id}`);
       await load();
       setSnackbar({ open: true, severity: "success", message: "Evento eliminado" });
-
       setDeleteDialog({ open: false, id: null, title: "" });
       setViewOpen(false);
       setSelected(null);
     } catch (err) {
       console.error(err);
       setSnackbar({ open: true, severity: "error", message: "Error eliminando evento" });
+    }
+  }
+
+  async function submitCreate(payload: EventPayload) {
+    try {
+      await http.post("/api/Events", payload);
+      await load();
+      setSnackbar({ open: true, severity: "success", message: "Evento creado" });
+      setCreateOpen(false);
+    } catch (err) {
+      console.error(err);
+      setSnackbar({ open: true, severity: "error", message: "Error creando evento" });
+      throw err;
     }
   }
 
@@ -195,28 +282,15 @@ export default function TimelinePage() {
     }
   }
 
-  async function submitCreate(payload: EventPayload) {
-    try {
-      await http.post("/api/Events", payload);
-      await load();
-      setSnackbar({ open: true, severity: "success", message: "Evento creado" });
-      setCreateOpen(false);
-    } catch (err) {
-      console.error(err);
-      setSnackbar({ open: true, severity: "error", message: "Error creando evento" });
-      throw err;
-    }
-  }
-
   return (
-    <Box sx={{ maxWidth: 1000, mx: "auto" }}>
-      <Stack direction="row" alignItems="center" justifyContent="space-between" mb={3} sx={{ px: 1 }}>
+    <Box sx={{ width: "100%" }}>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3} sx={{ px: 1 }}>
         <Box>
-          <Typography variant="h4" fontWeight={800}>
+          <Typography variant="h4" fontWeight={900}>
             Timeline histórica
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Ctrl + rueda = zoom · Click en un evento para ver detalles
+            Ctrl + rueda = zoom · Pasa el ratón para ver imagen · Click para detalles
           </Typography>
         </Box>
 
@@ -229,37 +303,44 @@ export default function TimelinePage() {
         ref={containerRef}
         sx={{
           bgcolor: "background.paper",
-          borderRadius: 2,
-          boxShadow: 2,
+          borderRadius: 3,
+          boxShadow: 3,
           p: 1,
-          height: 470,
+          height: 540,
           overflow: "hidden",
         }}
       />
 
       {/* VIEW */}
       <Dialog open={viewOpen} onClose={() => setViewOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle sx={{ fontWeight: 800 }}>{selected?.title}</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 900 }}>{selected?.title}</DialogTitle>
         <DialogContent dividers>
           {selected?.imageUrl ? (
             <Box
-              component="img"
-              src={selected.imageUrl}
-              alt={selected.title}
               sx={{
                 width: "100%",
-                maxHeight: 260,
-                objectFit: "cover",
+                height: 280,
                 borderRadius: 2,
+                overflow: "hidden",
                 mb: 2,
-                boxShadow: 1,
+                border: "1px solid rgba(122,79,42,0.15)",
+                bgcolor: "rgba(122,79,42,0.06)",
               }}
-            />
+            >
+              <Box
+                component="img"
+                src={selected.imageUrl}
+                alt={selected.title}
+                loading="lazy"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).style.display = "none";
+                }}
+                sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+              />
+            </Box>
           ) : null}
 
-          <Typography sx={{ mb: 2 }}>
-            {selected?.description || "Sin descripción"}
-          </Typography>
+          <Typography sx={{ mb: 2 }}>{selected?.description || "Sin descripción"}</Typography>
 
           <Stack direction="row" spacing={2} sx={{ mb: 1 }}>
             <Typography variant="body2" color="text.secondary">
@@ -308,26 +389,20 @@ export default function TimelinePage() {
         onSubmit={submitEdit}
       />
 
-      {/* DELETE CONFIRM */}
-      <Dialog
-        open={deleteDialog.open}
-        onClose={() => setDeleteDialog({ open: false, id: null, title: "" })}
-      >
-        <DialogTitle sx={{ fontWeight: 800 }}>Confirmar eliminación</DialogTitle>
+      {/* DELETE */}
+      <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, id: null, title: "" })}>
+        <DialogTitle sx={{ fontWeight: 900 }}>Confirmar eliminación</DialogTitle>
         <DialogContent dividers>
           ¿Seguro que quieres borrar <b>{deleteDialog.title}</b>?
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteDialog({ open: false, id: null, title: "" })}>
-            Cancelar
-          </Button>
+          <Button onClick={() => setDeleteDialog({ open: false, id: null, title: "" })}>Cancelar</Button>
           <Button color="error" variant="contained" onClick={confirmDelete}>
             Borrar
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* SNACKBAR */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={3000}
