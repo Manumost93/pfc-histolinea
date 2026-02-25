@@ -46,6 +46,7 @@ public async Task<IActionResult> Create(CreateHistoricalEventDto dto)
         Title = dto.Title,
         Description = dto.Description,
         StartDate = DateOnly.FromDateTime(dto.StartDate),
+        EndDate = dto.EndDate.HasValue ? DateOnly.FromDateTime(dto.EndDate.Value) : null,
         ImageUrl = dto.ImageUrl,
         SourceUrl = dto.SourceUrl
     };

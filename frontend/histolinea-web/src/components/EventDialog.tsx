@@ -26,13 +26,7 @@ type Props = {
   }) => Promise<void>;
 };
 
-export default function EventDialog({
-  open,
-  mode,
-  initial,
-  onClose,
-  onSubmit,
-}: Props) {
+export default function EventDialog({ open, mode, initial, onClose, onSubmit }: Props) {
   const titleText = useMemo(
     () => (mode === "create" ? "Crear evento" : "Editar evento"),
     [mode]
@@ -87,30 +81,17 @@ export default function EventDialog({
       sourceUrl: "",
     };
 
-    if (!title.trim()) {
-      newErrors.title = "El título es obligatorio";
-    }
-
-    if (!startDate) {
-      newErrors.startDate = "La fecha de inicio es obligatoria";
-    }
-
+    if (!title.trim()) newErrors.title = "El título es obligatorio";
+    if (!startDate) newErrors.startDate = "La fecha de inicio es obligatoria";
     if (endDate && startDate && endDate < startDate) {
       newErrors.endDate = "La fecha fin no puede ser anterior a inicio";
     }
 
     const urlRegex = /^https?:\/\/.+/i;
-
-    if (imageUrl && !urlRegex.test(imageUrl)) {
-      newErrors.imageUrl = "URL no válida";
-    }
-
-    if (sourceUrl && !urlRegex.test(sourceUrl)) {
-      newErrors.sourceUrl = "URL no válida";
-    }
+    if (imageUrl && !urlRegex.test(imageUrl)) newErrors.imageUrl = "URL no válida";
+    if (sourceUrl && !urlRegex.test(sourceUrl)) newErrors.sourceUrl = "URL no válida";
 
     setErrors(newErrors);
-
     return !Object.values(newErrors).some(Boolean);
   }
 
@@ -135,9 +116,9 @@ export default function EventDialog({
 
   return (
     <Dialog open={open} onClose={saving ? undefined : onClose} fullWidth maxWidth="sm">
-      <DialogTitle>{titleText}</DialogTitle>
+      <DialogTitle sx={{ fontWeight: 800 }}>{titleText}</DialogTitle>
 
-      <DialogContent>
+      <DialogContent dividers>
         <Stack spacing={2} sx={{ mt: 1 }}>
           <TextField
             label="Título *"
@@ -210,15 +191,9 @@ export default function EventDialog({
           onClick={handleSave}
           variant="contained"
           disabled={saving}
-          startIcon={
-            saving ? <CircularProgress size={18} color="inherit" /> : undefined
-          }
+          startIcon={saving ? <CircularProgress size={18} color="inherit" /> : undefined}
         >
-          {saving
-            ? "Guardando..."
-            : mode === "create"
-            ? "Crear"
-            : "Guardar"}
+          {saving ? "Guardando..." : mode === "create" ? "Crear" : "Guardar"}
         </Button>
       </DialogActions>
     </Dialog>
