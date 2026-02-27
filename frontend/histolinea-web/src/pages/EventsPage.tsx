@@ -14,6 +14,12 @@ import {
   Stack,
   Typography,
   Tooltip,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+  TextField,
+  Divider,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
@@ -21,6 +27,7 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import AddIcon from "@mui/icons-material/Add";
 import EventIcon from "@mui/icons-material/Event";
 import SearchIcon from "@mui/icons-material/Search";
+import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import {
   DataGrid,
   GridToolbarContainer,
@@ -31,6 +38,8 @@ import type { GridColDef } from "@mui/x-data-grid";
 import { http } from "../api/http";
 import type { HistoricalEvent } from "../types/HistoricalEvent";
 import EventDialog from "../components/EventDialog";
+import { ERA_OPTIONS, overlapsRange, getEraByStartDate } from "../utils/era";
+import type { EraKey } from "../utils/era";
 
 function CustomToolbar() {
   return (
@@ -53,6 +62,11 @@ function minMaxDates(rows: HistoricalEvent[]) {
 export default function EventsPage() {
   const [rows, setRows] = useState<HistoricalEvent[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Filters
+  const [era, setEra] = useState<"all" | EraKey>("all");
+  const [from, setFrom] = useState<string>("");
+  const [to, setTo] = useState<string>("");
 
   // Create/Edit dialog
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -94,13 +108,33 @@ export default function EventsPage() {
     load();
   }, []);
 
+  const filteredRows = useMemo(() => {
+    const f = from.trim() || undefined;
+    const t = to.trim() || undefined;
+
+    return rows.filter((e) => {
+      const evEra = getEraByStartDate(e.startDate).key;
+      if (era !== "all" && evEra !== era) return false;
+
+      if (!overlapsRange({ startDate: e.startDate, endDate: e.endDate, from: f, to: t })) return false;
+
+      return true;
+    });
+  }, [rows, era, from, to]);
+
   const stats = useMemo(() => {
-    const { min, max } = minMaxDates(rows);
+    const { min, max } = minMaxDates(filteredRows);
     return {
-      count: rows.length,
+      count: filteredRows.length,
       range: min && max ? `${min} → ${max}` : "—",
     };
-  }, [rows]);
+  }, [filteredRows]);
+
+  function resetFilters() {
+    setEra("all");
+    setFrom("");
+    setTo("");
+  }
 
   function openCreate() {
     setDialogMode("create");
@@ -201,6 +235,8 @@ export default function EventsPage() {
     },
   ];
 
+  const hasActiveFilters = era !== "all" || !!from.trim() || !!to.trim();
+
   return (
     <Box sx={{ width: "100%" }}>
       {/* Hero */}
@@ -228,7 +264,7 @@ export default function EventsPage() {
             </Box>
           </Stack>
 
-          <Stack direction="row" spacing={1} alignItems="center">
+          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
             <Chip label={`${stats.count} eventos`} />
             <Chip variant="outlined" label={`Rango: ${stats.range}`} />
             <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
@@ -236,11 +272,62 @@ export default function EventsPage() {
             </Button>
           </Stack>
         </Stack>
+
+        <Divider sx={{ my: 2 }} />
+
+        {/* Filters */}
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ sm: "center" }}>
+          <FormControl size="small" sx={{ minWidth: 200 }}>
+            <InputLabel>Época</InputLabel>
+            <Select value={era} label="Época" onChange={(e) => setEra(e.target.value as any)}>
+              {ERA_OPTIONS.map((opt) => (
+                <MenuItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <TextField
+            label="Desde"
+            type="date"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+            InputLabelProps={{ shrink: true }}
+            sx={{ width: { xs: "100%", sm: 190 } }}
+          />
+
+          <TextField
+            label="Hasta"
+            type="date"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+            InputLabelProps={{ shrink: true }}
+            sx={{ width: { xs: "100%", sm: 190 } }}
+          />
+
+          <Box sx={{ flex: 1 }} />
+
+          <Button
+            variant="outlined"
+            startIcon={<RestartAltIcon />}
+            onClick={resetFilters}
+            disabled={!hasActiveFilters}
+          >
+            Reset
+          </Button>
+        </Stack>
+
+        {hasActiveFilters && (
+          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+            Mostrando {filteredRows.length} de {rows.length} eventos.
+          </Typography>
+        )}
       </Paper>
 
       <Paper sx={{ p: 2 }}>
         <DataGrid
-          rows={rows}
+          rows={filteredRows}
           columns={columns}
           getRowId={(row) => row.id}
           loading={loading}
@@ -256,13 +343,20 @@ export default function EventsPage() {
           }}
         />
 
-        {!loading && rows.length === 0 && (
+        {!loading && filteredRows.length === 0 && (
           <Stack alignItems="center" py={5} spacing={1}>
             <EventIcon sx={{ fontSize: 44, opacity: 0.35 }} />
-            <Typography color="text.secondary">No hay eventos todavía</Typography>
-            <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
-              Crear primer evento
-            </Button>
+            <Typography color="text.secondary">
+              No hay eventos para estos filtros
+            </Typography>
+            <Stack direction="row" spacing={1}>
+              <Button variant="outlined" onClick={resetFilters} disabled={!hasActiveFilters}>
+                Reset filtros
+              </Button>
+              <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
+                Crear evento
+              </Button>
+            </Stack>
           </Stack>
         )}
       </Paper>

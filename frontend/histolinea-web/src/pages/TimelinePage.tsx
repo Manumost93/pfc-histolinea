@@ -12,10 +12,17 @@ import {
   Snackbar,
   Stack,
   Typography,
+  Divider,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+  TextField,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import TodayIcon from "@mui/icons-material/Today";
 import ZoomOutMapIcon from "@mui/icons-material/ZoomOutMap";
+import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import { DataSet } from "vis-data";
 import { Timeline } from "vis-timeline/standalone";
 import "vis-timeline/styles/vis-timeline-graph2d.css";
@@ -23,6 +30,8 @@ import "vis-timeline/styles/vis-timeline-graph2d.css";
 import { http } from "../api/http";
 import type { HistoricalEvent } from "../types/HistoricalEvent";
 import EventDialog from "../components/EventDialog";
+import { ERA_OPTIONS, overlapsRange, getEraByStartDate } from "../utils/era";
+import type { EraKey } from "../utils/era";
 
 type EventPayload = {
   title: string;
@@ -33,8 +42,6 @@ type EventPayload = {
   sourceUrl: string | null;
 };
 
-type EraKey = "ancient" | "medieval" | "modern" | "contemporary";
-
 function escapeHtml(s: string) {
   return s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 }
@@ -44,17 +51,6 @@ function escapeAttr(s: string) {
     .replaceAll('"', "&quot;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;");
-}
-function yearFromDateOnly(dateOnly: string): number | null {
-  if (!dateOnly || dateOnly.length < 4) return null;
-  const y = Number(dateOnly.slice(0, 4));
-  return Number.isFinite(y) ? y : null;
-}
-function getEra(year: number): { key: EraKey; label: string; className: string; dot: string } {
-  if (year < 476) return { key: "ancient", label: "Antigua", className: "era-ancient", dot: "rgba(46,125,50,0.9)" };
-  if (year < 1492) return { key: "medieval", label: "Medieval", className: "era-medieval", dot: "rgba(109,76,65,0.95)" };
-  if (year < 1789) return { key: "modern", label: "Moderna", className: "era-modern", dot: "rgba(21,101,192,0.9)" };
-  return { key: "contemporary", label: "Contemporánea", className: "era-contemporary", dot: "rgba(106,27,154,0.9)" };
 }
 
 function minMaxDates(rows: HistoricalEvent[]) {
@@ -70,6 +66,11 @@ export default function TimelinePage() {
 
   const [events, setEvents] = useState<HistoricalEvent[]>([]);
   const eventsRef = useRef<HistoricalEvent[]>([]);
+
+  // Filters
+  const [era, setEra] = useState<"all" | EraKey>("all");
+  const [from, setFrom] = useState<string>("");
+  const [to, setTo] = useState<string>("");
 
   const [selected, setSelected] = useState<HistoricalEvent | null>(null);
   const [viewOpen, setViewOpen] = useState(false);
@@ -103,9 +104,24 @@ export default function TimelinePage() {
     load();
   }, []);
 
+  // 🔑 Para que el "select" siempre busque en lo que se ve (filtrado)
+  const filteredEvents = useMemo(() => {
+    const f = from.trim() || undefined;
+    const t = to.trim() || undefined;
+
+    return events.filter((e) => {
+      const evEra = getEraByStartDate(e.startDate).key;
+      if (era !== "all" && evEra !== era) return false;
+
+      if (!overlapsRange({ startDate: e.startDate, endDate: e.endDate, from: f, to: t })) return false;
+
+      return true;
+    });
+  }, [events, era, from, to]);
+
   useEffect(() => {
-    eventsRef.current = events;
-  }, [events]);
+    eventsRef.current = filteredEvents;
+  }, [filteredEvents]);
 
   // Crear timeline una sola vez
   useEffect(() => {
@@ -153,9 +169,8 @@ export default function TimelinePage() {
 
   const items = useMemo(() => {
     return new DataSet(
-      events.map((e) => {
-        const y = yearFromDateOnly(e.startDate) ?? 0;
-        const era = getEra(y);
+      filteredEvents.map((e) => {
+        const eraInfo = getEraByStartDate(e.startDate);
 
         const title = escapeHtml(e.title);
         const safeUrl = e.imageUrl ? escapeAttr(e.imageUrl) : null;
@@ -171,7 +186,7 @@ export default function TimelinePage() {
           `;
 
         const dot = `
-          <span style="width:11px;height:11px;border-radius:999px;display:inline-block;background:${era.dot};box-shadow:0 0 0 3px rgba(255,255,255,0.95);border:1px solid rgba(0,0,0,0.08)"></span>
+          <span style="width:11px;height:11px;border-radius:999px;display:inline-block;background:${eraInfo.dot};box-shadow:0 0 0 3px rgba(255,255,255,0.95);border:1px solid rgba(0,0,0,0.08)"></span>
         `;
 
         const content = `
@@ -193,15 +208,15 @@ export default function TimelinePage() {
             <div style="opacity:.85;">${escapeHtml(e.description || "Sin descripción")}</div>
             <div style="margin-top:10px;opacity:.75;font-size:12px;">
               <b>${escapeHtml(e.startDate)}</b>${e.endDate ? " → <b>" + escapeHtml(e.endDate) + "</b>" : ""}
-              · Época: <b>${escapeHtml(era.label)}</b>
+              · Época: <b>${escapeHtml(eraInfo.label)}</b>
             </div>
           </div>
         `;
 
         return {
           id: e.id,
-          group: era.key,
-          className: era.className,
+          group: eraInfo.key,
+          className: eraInfo.className,
           content,
           start: e.startDate,
           end: e.endDate || undefined,
@@ -209,22 +224,22 @@ export default function TimelinePage() {
         };
       })
     );
-  }, [events]);
+  }, [filteredEvents]);
 
   useEffect(() => {
     if (!timelineRef.current) return;
     timelineRef.current.setGroups(groups);
     timelineRef.current.setItems(items);
-    if (events.length > 0) timelineRef.current.fit({ animation: { duration: 250 } });
-  }, [groups, items, events.length]);
+    if (filteredEvents.length > 0) timelineRef.current.fit({ animation: { duration: 250 } });
+  }, [groups, items, filteredEvents.length]);
 
   const stats = useMemo(() => {
-    const { min, max } = minMaxDates(events);
+    const { min, max } = minMaxDates(filteredEvents);
     return {
-      count: events.length,
+      count: filteredEvents.length,
       range: min && max ? `${min} → ${max}` : "—",
     };
-  }, [events]);
+  }, [filteredEvents]);
 
   function fitAll() {
     timelineRef.current?.fit({ animation: { duration: 250 } });
@@ -235,6 +250,14 @@ export default function TimelinePage() {
     if (!t) return;
     t.moveTo(new Date(), { animation: { duration: 250 } });
   }
+
+  function resetFilters() {
+    setEra("all");
+    setFrom("");
+    setTo("");
+  }
+
+  const hasActiveFilters = era !== "all" || !!from.trim() || !!to.trim();
 
   function openCreate() {
     setSelected(null);
@@ -320,14 +343,61 @@ export default function TimelinePage() {
           </Stack>
         </Stack>
 
+        <Divider sx={{ my: 2 }} />
+
+        {/* Filters */}
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ sm: "center" }}>
+          <FormControl size="small" sx={{ minWidth: 200 }}>
+            <InputLabel>Época</InputLabel>
+            <Select value={era} label="Época" onChange={(e) => setEra(e.target.value as any)}>
+              {ERA_OPTIONS.map((opt) => (
+                <MenuItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <TextField
+            label="Desde"
+            type="date"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+            InputLabelProps={{ shrink: true }}
+            sx={{ width: { xs: "100%", sm: 190 } }}
+          />
+
+          <TextField
+            label="Hasta"
+            type="date"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+            InputLabelProps={{ shrink: true }}
+            sx={{ width: { xs: "100%", sm: 190 } }}
+          />
+
+          <Box sx={{ flex: 1 }} />
+
+          <Button
+            variant="outlined"
+            startIcon={<RestartAltIcon />}
+            onClick={resetFilters}
+            disabled={!hasActiveFilters}
+          >
+            Reset
+          </Button>
+        </Stack>
+
         <Stack direction="row" spacing={1} sx={{ mt: 2 }} flexWrap="wrap">
           <Chip size="small" label="Antigua" className="era-ancient" />
           <Chip size="small" label="Medieval" className="era-medieval" />
           <Chip size="small" label="Moderna" className="era-modern" />
           <Chip size="small" label="Contemporánea" className="era-contemporary" />
-          <Typography variant="caption" color="text.secondary" sx={{ ml: 1, alignSelf: "center" }}>
-            Agrupación automática por año de inicio.
-          </Typography>
+          {hasActiveFilters && (
+            <Typography variant="caption" color="text.secondary" sx={{ ml: 1, alignSelf: "center" }}>
+              Mostrando {filteredEvents.length} de {events.length} eventos.
+            </Typography>
+          )}
         </Stack>
       </Paper>
 
