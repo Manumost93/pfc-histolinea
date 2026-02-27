@@ -1,62 +1,78 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   AppBar,
   Box,
   Container,
-  CssBaseline,
   Tab,
   Tabs,
   Toolbar,
   Typography,
 } from "@mui/material";
-import { ThemeProvider } from "@mui/material/styles";
 import HistoryEduIcon from "@mui/icons-material/HistoryEdu";
 
-import { theme } from "./theme";
 import EventsPage from "./pages/EventsPage";
 import TimelinePage from "./pages/TimelinePage";
 
 export default function App() {
-  const [view, setView] = useState<"list" | "timeline">("list");
+  const [tab, setTab] = useState<"events" | "timeline">("events");
+
+  const page = useMemo(() => {
+    return tab === "events" ? <EventsPage /> : <TimelinePage />;
+  }, [tab]);
 
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-
+    <Box
+      sx={{
+        minHeight: "100vh",
+        bgcolor: "background.default",
+        // Fondo "papel" con puntos
+        backgroundImage:
+          "radial-gradient(rgba(122,79,42,0.10) 1px, transparent 1px)",
+        backgroundSize: "18px 18px",
+      }}
+    >
       <AppBar
-        position="sticky"
+        position="static"
         elevation={0}
+        color="transparent"
         sx={{
-          bgcolor: "rgba(255,250,240,0.85)",
-          backdropFilter: "blur(8px)",
-          borderBottom: "1px solid rgba(122,79,42,0.18)",
-          color: "text.primary",
+          borderBottom: "1px solid rgba(122,79,42,0.15)",
+          backdropFilter: "blur(6px)",
         }}
       >
-        <Toolbar sx={{ gap: 1 }}>
-          <HistoryEduIcon color="primary" />
-          <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: 0.2 }}>
-            HistoLinea
-          </Typography>
+        <Container maxWidth="lg">
+          <Toolbar sx={{ px: { xs: 0, sm: 0 } }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, flex: 1 }}>
+              <HistoryEduIcon />
+              <Typography variant="h6" fontWeight={900}>
+                HistoLinea
+              </Typography>
+            </Box>
 
-          <Box sx={{ flex: 1 }} />
-
-          <Tabs
-            value={view}
-            onChange={(_, v) => setView(v)}
-            textColor="primary"
-            indicatorColor="primary"
-          >
-            <Tab value="list" label="Eventos" />
-            <Tab value="timeline" label="Timeline" />
-          </Tabs>
-        </Toolbar>
+            <Tabs
+              value={tab}
+              onChange={(_, v) => setTab(v)}
+              textColor="inherit"
+              indicatorColor="primary"
+            >
+              <Tab value="events" label="EVENTOS" />
+              <Tab value="timeline" label="TIMELINE" />
+            </Tabs>
+          </Toolbar>
+        </Container>
       </AppBar>
 
-      <Container sx={{ py: 4 }}>
-        {view === "list" && <EventsPage key="list" />}
-        {view === "timeline" && <TimelinePage key="timeline" />}
+      {/* ✅ Contenedor global centrado para TODAS las páginas */}
+      <Container
+        maxWidth="lg"
+        sx={{
+          py: { xs: 3, sm: 4 },
+          display: "flex",
+          justifyContent: "center",
+        }}
+      >
+        <Box sx={{ width: "100%", maxWidth: 1100 }}>{page}</Box>
       </Container>
-    </ThemeProvider>
+    </Box>
   );
 }

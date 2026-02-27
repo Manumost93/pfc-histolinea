@@ -433,3 +433,23 @@ dist/
 bin/
 obj/
 .env
+
+# Node
+node_modules/
+dist/
+.vite/
+*.log
+
+# .NET
+bin/
+obj/
+
+# SQLite (no versionar datos locales)
+*.db
+*.db-shm
+*.db-wal
+
+# OS / IDE
+.DS_Store
+.vscode/
+.idea/

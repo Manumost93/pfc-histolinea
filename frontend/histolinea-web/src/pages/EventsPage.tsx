@@ -43,23 +43,27 @@ export default function EventsPage() {
   const [rows, setRows] = useState<HistoricalEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Create/Edit dialog
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
   const [selected, setSelected] = useState<HistoricalEvent | null>(null);
 
+  // View dialog
   const [viewOpen, setViewOpen] = useState(false);
 
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: "",
-    severity: "success" as "success" | "error",
-  });
-
+  // Delete confirm
   const [deleteDialog, setDeleteDialog] = useState<{
     open: boolean;
     id: string | null;
     title: string;
   }>({ open: false, id: null, title: "" });
+
+  // Snackbar
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success" as "success" | "error",
+  });
 
   async function load() {
     setLoading(true);
@@ -68,8 +72,8 @@ export default function EventsPage() {
       setRows(res.data);
     } catch (err) {
       console.error(err);
-      setSnackbar({ open: true, severity: "error", message: "Error cargando eventos" });
       setRows([]);
+      setSnackbar({ open: true, severity: "error", message: "Error cargando eventos" });
     } finally {
       setLoading(false);
     }
@@ -96,6 +100,25 @@ export default function EventsPage() {
     setViewOpen(true);
   }
 
+  function openDelete(row: HistoricalEvent) {
+    setDeleteDialog({ open: true, id: row.id, title: row.title });
+  }
+
+  async function confirmDelete() {
+    if (!deleteDialog.id) return;
+
+    try {
+      await http.delete(`/api/Events/${deleteDialog.id}`);
+      await load();
+      setSnackbar({ open: true, severity: "success", message: "Evento eliminado" });
+    } catch (err) {
+      console.error(err);
+      setSnackbar({ open: true, severity: "error", message: "Error eliminando evento" });
+    } finally {
+      setDeleteDialog({ open: false, id: null, title: "" });
+    }
+  }
+
   async function submit(payload: {
     title: string;
     description: string | null;
@@ -108,12 +131,11 @@ export default function EventsPage() {
       if (dialogMode === "create") {
         await http.post("/api/Events", payload);
       } else {
-        if (!selected) throw new Error("No hay evento seleccionado para editar");
+        if (!selected) throw new Error("No hay evento seleccionado");
         await http.put(`/api/Events/${selected.id}`, payload);
       }
 
       await load();
-
       setSnackbar({
         open: true,
         severity: "success",
@@ -123,26 +145,6 @@ export default function EventsPage() {
       console.error(err);
       setSnackbar({ open: true, severity: "error", message: "Error guardando evento" });
       throw err;
-    }
-  }
-
-  function openDeleteDialog(ev: HistoricalEvent) {
-    setDeleteDialog({ open: true, id: ev.id, title: ev.title });
-  }
-
-  async function confirmDelete() {
-    if (!deleteDialog.id) return;
-
-    try {
-      await http.delete(`/api/Events/${deleteDialog.id}`);
-      await load();
-
-      setSnackbar({ open: true, severity: "success", message: "Evento eliminado" });
-    } catch (err) {
-      console.error(err);
-      setSnackbar({ open: true, severity: "error", message: "Error eliminando evento" });
-    } finally {
-      setDeleteDialog({ open: false, id: null, title: "" });
     }
   }
 
@@ -166,7 +168,7 @@ export default function EventsPage() {
             <EditIcon fontSize="small" />
           </IconButton>
 
-          <IconButton size="small" title="Borrar" onClick={() => openDeleteDialog(params.row)}>
+          <IconButton size="small" title="Borrar" onClick={() => openDelete(params.row)}>
             <DeleteIcon fontSize="small" />
           </IconButton>
         </Stack>
@@ -175,15 +177,13 @@ export default function EventsPage() {
   ];
 
   return (
-    <Box sx={{ maxWidth: 1000, mx: "auto" }}>
+    <Box sx={{ width: "100%" }}>
       <Stack
         direction="row"
         alignItems="center"
         justifyContent="space-between"
         mb={3}
-        sx={{
-          px: 1,
-        }}
+        sx={{ px: 1 }}
       >
         <Stack direction="row" alignItems="center" spacing={1}>
           <EventIcon color="primary" />
@@ -192,7 +192,7 @@ export default function EventsPage() {
               Eventos históricos
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Gestiona tu colección de eventos y visualízalos en una línea temporal.
+              Gestiona tu colección y visualízala en la timeline.
             </Typography>
           </Box>
         </Stack>
@@ -202,14 +202,7 @@ export default function EventsPage() {
         </Button>
       </Stack>
 
-      <Box
-        sx={{
-          bgcolor: "background.paper",
-          borderRadius: 2,
-          boxShadow: 2,
-          p: 2,
-        }}
-      >
+      <Box sx={{ bgcolor: "background.paper", borderRadius: 2, boxShadow: 2, p: 2 }}>
         <DataGrid
           rows={rows}
           columns={columns}
@@ -235,7 +228,7 @@ export default function EventsPage() {
         )}
       </Box>
 
-      {/* Create/Edit */}
+      {/* CREATE / EDIT */}
       <EventDialog
         open={dialogOpen}
         mode={dialogMode}
@@ -244,29 +237,42 @@ export default function EventsPage() {
         onSubmit={submit}
       />
 
-      {/* View (con imagen) */}
+      {/* VIEW */}
       <Dialog open={viewOpen} onClose={() => setViewOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle sx={{ fontWeight: 800 }}>{selected?.title}</DialogTitle>
         <DialogContent dividers>
           {selected?.imageUrl ? (
             <Box
-              component="img"
-              src={selected.imageUrl}
-              alt={selected.title}
               sx={{
                 width: "100%",
-                maxHeight: 260,
-                objectFit: "cover",
+                height: 260,
                 borderRadius: 2,
                 mb: 2,
+                overflow: "hidden",
                 boxShadow: 1,
+                bgcolor: "rgba(122,79,42,0.06)",
+                border: "1px solid rgba(122,79,42,0.15)",
               }}
-            />
+            >
+              <Box
+                component="img"
+                src={selected.imageUrl}
+                alt={selected.title}
+                loading="lazy"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).style.display = "none";
+                }}
+                sx={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  display: "block",
+                }}
+              />
+            </Box>
           ) : null}
 
-          <Typography sx={{ mb: 2 }}>
-            {selected?.description || "Sin descripción"}
-          </Typography>
+          <Typography sx={{ mb: 2 }}>{selected?.description || "Sin descripción"}</Typography>
 
           <Stack direction="row" spacing={2} sx={{ mb: 1 }}>
             <Typography variant="body2" color="text.secondary">
@@ -291,7 +297,7 @@ export default function EventsPage() {
         </DialogActions>
       </Dialog>
 
-      {/* Delete confirm */}
+      {/* DELETE confirm */}
       <Dialog
         open={deleteDialog.open}
         onClose={() => setDeleteDialog({ open: false, id: null, title: "" })}
