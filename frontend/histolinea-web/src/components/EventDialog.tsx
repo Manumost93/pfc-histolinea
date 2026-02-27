@@ -7,7 +7,8 @@ import {
   DialogTitle,
   Stack,
   TextField,
-  CircularProgress,
+  Box,
+  Typography,
 } from "@mui/material";
 import type { HistoricalEvent } from "../types/HistoricalEvent";
 
@@ -26,11 +27,18 @@ type Props = {
   }) => Promise<void>;
 };
 
+function isValidUrl(s: string) {
+  if (!s.trim()) return true;
+  try {
+    new URL(s);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export default function EventDialog({ open, mode, initial, onClose, onSubmit }: Props) {
-  const titleText = useMemo(
-    () => (mode === "create" ? "Crear evento" : "Editar evento"),
-    [mode]
-  );
+  const titleText = useMemo(() => (mode === "create" ? "Crear evento" : "Editar evento"), [mode]);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -39,14 +47,7 @@ export default function EventDialog({ open, mode, initial, onClose, onSubmit }: 
   const [imageUrl, setImageUrl] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
   const [saving, setSaving] = useState(false);
-
-  const [errors, setErrors] = useState({
-    title: "",
-    startDate: "",
-    endDate: "",
-    imageUrl: "",
-    sourceUrl: "",
-  });
+  const [imgOk, setImgOk] = useState(true);
 
   useEffect(() => {
     if (!open) return;
@@ -57,14 +58,7 @@ export default function EventDialog({ open, mode, initial, onClose, onSubmit }: 
     setEndDate(initial?.endDate ?? "");
     setImageUrl(initial?.imageUrl ?? "");
     setSourceUrl(initial?.sourceUrl ?? "");
-
-    setErrors({
-      title: "",
-      startDate: "",
-      endDate: "",
-      imageUrl: "",
-      sourceUrl: "",
-    });
+    setImgOk(true);
   }, [open, initial]);
 
   function toIso(dateOnly: string) {
@@ -72,31 +66,22 @@ export default function EventDialog({ open, mode, initial, onClose, onSubmit }: 
     return `${dateOnly}T00:00:00`;
   }
 
-  function validate() {
-    const newErrors = {
-      title: "",
-      startDate: "",
-      endDate: "",
-      imageUrl: "",
-      sourceUrl: "",
-    };
-
-    if (!title.trim()) newErrors.title = "El título es obligatorio";
-    if (!startDate) newErrors.startDate = "La fecha de inicio es obligatoria";
-    if (endDate && startDate && endDate < startDate) {
-      newErrors.endDate = "La fecha fin no puede ser anterior a inicio";
-    }
-
-    const urlRegex = /^https?:\/\/.+/i;
-    if (imageUrl && !urlRegex.test(imageUrl)) newErrors.imageUrl = "URL no válida";
-    if (sourceUrl && !urlRegex.test(sourceUrl)) newErrors.sourceUrl = "URL no válida";
-
-    setErrors(newErrors);
-    return !Object.values(newErrors).some(Boolean);
-  }
+  const imageUrlError = !isValidUrl(imageUrl) ? "URL inválida" : "";
+  const sourceUrlError = !isValidUrl(sourceUrl) ? "URL inválida" : "";
 
   async function handleSave() {
-    if (!validate()) return;
+    if (!title.trim()) {
+      alert("El título es obligatorio");
+      return;
+    }
+    if (!startDate) {
+      alert("La fecha de inicio es obligatoria");
+      return;
+    }
+    if (imageUrlError || sourceUrlError) {
+      alert("Revisa las URLs (no son válidas).");
+      return;
+    }
 
     setSaving(true);
     try {
@@ -116,9 +101,9 @@ export default function EventDialog({ open, mode, initial, onClose, onSubmit }: 
 
   return (
     <Dialog open={open} onClose={saving ? undefined : onClose} fullWidth maxWidth="sm">
-      <DialogTitle sx={{ fontWeight: 800 }}>{titleText}</DialogTitle>
+      <DialogTitle sx={{ fontWeight: 950 }}>{titleText}</DialogTitle>
 
-      <DialogContent dividers>
+      <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
           <TextField
             label="Título *"
@@ -126,8 +111,6 @@ export default function EventDialog({ open, mode, initial, onClose, onSubmit }: 
             onChange={(e) => setTitle(e.target.value)}
             autoFocus
             fullWidth
-            error={!!errors.title}
-            helperText={errors.title}
           />
 
           <TextField
@@ -147,8 +130,6 @@ export default function EventDialog({ open, mode, initial, onClose, onSubmit }: 
               onChange={(e) => setStartDate(e.target.value)}
               InputLabelProps={{ shrink: true }}
               fullWidth
-              error={!!errors.startDate}
-              helperText={errors.startDate}
             />
             <TextField
               label="Fin"
@@ -157,43 +138,68 @@ export default function EventDialog({ open, mode, initial, onClose, onSubmit }: 
               onChange={(e) => setEndDate(e.target.value)}
               InputLabelProps={{ shrink: true }}
               fullWidth
-              error={!!errors.endDate}
-              helperText={errors.endDate}
             />
           </Stack>
 
           <TextField
             label="Image URL"
             value={imageUrl}
-            onChange={(e) => setImageUrl(e.target.value)}
+            onChange={(e) => {
+              setImageUrl(e.target.value);
+              setImgOk(true);
+            }}
+            error={!!imageUrlError}
+            helperText={imageUrlError || "Se mostrará una miniatura en la timeline y un banner en detalle."}
             fullWidth
-            error={!!errors.imageUrl}
-            helperText={errors.imageUrl}
           />
+
+          {/* Preview imagen */}
+          {imageUrl.trim() ? (
+            <Box
+              sx={{
+                width: "100%",
+                height: 180,
+                borderRadius: 2,
+                overflow: "hidden",
+                border: "1px solid rgba(122,79,42,0.15)",
+                bgcolor: "rgba(122,79,42,0.06)",
+              }}
+            >
+              {imgOk ? (
+                <Box
+                  component="img"
+                  src={imageUrl}
+                  alt="preview"
+                  onError={() => setImgOk(false)}
+                  sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                />
+              ) : (
+                <Stack alignItems="center" justifyContent="center" sx={{ height: "100%" }}>
+                  <Typography variant="body2" color="text.secondary">
+                    No se pudo cargar la imagen (URL o CORS).
+                  </Typography>
+                </Stack>
+              )}
+            </Box>
+          ) : null}
 
           <TextField
             label="Source URL"
             value={sourceUrl}
             onChange={(e) => setSourceUrl(e.target.value)}
+            error={!!sourceUrlError}
+            helperText={sourceUrlError || "Enlace a Wikipedia, libro, artículo, etc."}
             fullWidth
-            error={!!errors.sourceUrl}
-            helperText={errors.sourceUrl}
           />
         </Stack>
       </DialogContent>
 
-      <DialogActions>
+      <DialogActions sx={{ px: 3, pb: 2 }}>
         <Button onClick={onClose} disabled={saving}>
           Cancelar
         </Button>
-
-        <Button
-          onClick={handleSave}
-          variant="contained"
-          disabled={saving}
-          startIcon={saving ? <CircularProgress size={18} color="inherit" /> : undefined}
-        >
-          {saving ? "Guardando..." : mode === "create" ? "Crear" : "Guardar"}
+        <Button onClick={handleSave} variant="contained" disabled={saving}>
+          {mode === "create" ? "Crear" : "Guardar"}
         </Button>
       </DialogActions>
     </Dialog>

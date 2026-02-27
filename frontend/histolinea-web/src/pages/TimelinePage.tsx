@@ -3,14 +3,19 @@ import {
   Alert,
   Box,
   Button,
+  Chip,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  Paper,
   Snackbar,
   Stack,
   Typography,
 } from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
+import TodayIcon from "@mui/icons-material/Today";
+import ZoomOutMapIcon from "@mui/icons-material/ZoomOutMap";
 import { DataSet } from "vis-data";
 import { Timeline } from "vis-timeline/standalone";
 import "vis-timeline/styles/vis-timeline-graph2d.css";
@@ -33,7 +38,6 @@ type EraKey = "ancient" | "medieval" | "modern" | "contemporary";
 function escapeHtml(s: string) {
   return s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 }
-
 function escapeAttr(s: string) {
   return s
     .replaceAll("&", "&amp;")
@@ -41,24 +45,23 @@ function escapeAttr(s: string) {
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;");
 }
-
 function yearFromDateOnly(dateOnly: string): number | null {
-  // dateOnly esperado "YYYY-MM-DD"
   if (!dateOnly || dateOnly.length < 4) return null;
   const y = Number(dateOnly.slice(0, 4));
   return Number.isFinite(y) ? y : null;
 }
-
 function getEra(year: number): { key: EraKey; label: string; className: string; dot: string } {
-  // Criterio simple (ajustable):
-  // Antigua: < 476
-  // Medieval: 476 - 1491
-  // Moderna: 1492 - 1788
-  // Contemporánea: >= 1789
   if (year < 476) return { key: "ancient", label: "Antigua", className: "era-ancient", dot: "rgba(46,125,50,0.9)" };
   if (year < 1492) return { key: "medieval", label: "Medieval", className: "era-medieval", dot: "rgba(109,76,65,0.95)" };
   if (year < 1789) return { key: "modern", label: "Moderna", className: "era-modern", dot: "rgba(21,101,192,0.9)" };
   return { key: "contemporary", label: "Contemporánea", className: "era-contemporary", dot: "rgba(106,27,154,0.9)" };
+}
+
+function minMaxDates(rows: HistoricalEvent[]) {
+  if (rows.length === 0) return { min: null as string | null, max: null as string | null };
+  const starts = rows.map((r) => r.startDate).sort();
+  const ends = rows.map((r) => r.endDate ?? r.startDate).sort();
+  return { min: starts[0], max: ends[ends.length - 1] };
 }
 
 export default function TimelinePage() {
@@ -69,7 +72,6 @@ export default function TimelinePage() {
   const eventsRef = useRef<HistoricalEvent[]>([]);
 
   const [selected, setSelected] = useState<HistoricalEvent | null>(null);
-
   const [viewOpen, setViewOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
@@ -116,7 +118,7 @@ export default function TimelinePage() {
       stack: true,
       horizontalScroll: true,
       zoomKey: "ctrlKey",
-      maxHeight: 540,
+      maxHeight: 560,
       margin: { item: 12 },
     });
 
@@ -140,18 +142,15 @@ export default function TimelinePage() {
     };
   }, []);
 
-  // Groups por época
   const groups = useMemo(() => {
-    const ds = new DataSet([
+    return new DataSet([
       { id: "ancient", content: "Antigua", className: "era-ancient" },
       { id: "medieval", content: "Medieval", className: "era-medieval" },
       { id: "modern", content: "Moderna", className: "era-modern" },
       { id: "contemporary", content: "Contemporánea", className: "era-contemporary" },
     ]);
-    return ds;
   }, []);
 
-  // Items con miniatura uniforme + marcador (dot) + tooltip con imagen grande
   const items = useMemo(() => {
     return new DataSet(
       events.map((e) => {
@@ -161,38 +160,36 @@ export default function TimelinePage() {
         const title = escapeHtml(e.title);
         const safeUrl = e.imageUrl ? escapeAttr(e.imageUrl) : null;
 
-        // Thumbnail fijo 34x34 (uniforme)
         const thumb = safeUrl
           ? `
-            <span style="width:34px;height:34px;display:inline-block;flex:0 0 34px;border-radius:8px;overflow:hidden;border:1px solid rgba(122,79,42,0.25);background:rgba(122,79,42,0.08)">
+            <span style="width:36px;height:36px;display:inline-block;flex:0 0 36px;border-radius:10px;overflow:hidden;border:1px solid rgba(122,79,42,0.25);background:rgba(122,79,42,0.08)">
               <img src="${safeUrl}" style="width:100%;height:100%;display:block;object-fit:cover;" />
             </span>
           `
           : `
-            <span style="width:34px;height:34px;border-radius:8px;display:inline-block;flex:0 0 34px;background:rgba(122,79,42,0.18);border:1px solid rgba(122,79,42,0.25)"></span>
+            <span style="width:36px;height:36px;border-radius:10px;display:inline-block;flex:0 0 36px;background:rgba(122,79,42,0.18);border:1px solid rgba(122,79,42,0.25)"></span>
           `;
 
-        // Marker dot (mejor “punto” visual)
         const dot = `
-          <span style="width:10px;height:10px;border-radius:999px;display:inline-block;background:${era.dot};box-shadow:0 0 0 3px rgba(255,255,255,0.9);border:1px solid rgba(0,0,0,0.08)"></span>
+          <span style="width:11px;height:11px;border-radius:999px;display:inline-block;background:${era.dot};box-shadow:0 0 0 3px rgba(255,255,255,0.95);border:1px solid rgba(0,0,0,0.08)"></span>
         `;
 
         const content = `
           <div style="display:flex;align-items:center;gap:10px;">
             ${dot}
             ${thumb}
-            <span style="font-weight:800;line-height:1.1;">${title}</span>
+            <span style="font-weight:900;line-height:1.15;">${title}</span>
           </div>
         `;
 
         const tooltip = `
-          <div style="max-width:360px;">
+          <div style="max-width:380px;">
             ${
               safeUrl
-                ? `<img src="${safeUrl}" style="width:100%;height:170px;object-fit:cover;border-radius:12px;display:block;margin-bottom:10px;" />`
+                ? `<img src="${safeUrl}" style="width:100%;height:180px;object-fit:cover;border-radius:12px;display:block;margin-bottom:10px;" />`
                 : ""
             }
-            <div style="font-weight:900;margin-bottom:6px;">${title}</div>
+            <div style="font-weight:950;margin-bottom:6px;">${title}</div>
             <div style="opacity:.85;">${escapeHtml(e.description || "Sin descripción")}</div>
             <div style="margin-top:10px;opacity:.75;font-size:12px;">
               <b>${escapeHtml(e.startDate)}</b>${e.endDate ? " → <b>" + escapeHtml(e.endDate) + "</b>" : ""}
@@ -204,7 +201,7 @@ export default function TimelinePage() {
         return {
           id: e.id,
           group: era.key,
-          className: era.className, // colorea borde según época
+          className: era.className,
           content,
           start: e.startDate,
           end: e.endDate || undefined,
@@ -214,13 +211,30 @@ export default function TimelinePage() {
     );
   }, [events]);
 
-  // Aplicar groups + items al timeline
   useEffect(() => {
     if (!timelineRef.current) return;
     timelineRef.current.setGroups(groups);
     timelineRef.current.setItems(items);
     if (events.length > 0) timelineRef.current.fit({ animation: { duration: 250 } });
   }, [groups, items, events.length]);
+
+  const stats = useMemo(() => {
+    const { min, max } = minMaxDates(events);
+    return {
+      count: events.length,
+      range: min && max ? `${min} → ${max}` : "—",
+    };
+  }, [events]);
+
+  function fitAll() {
+    timelineRef.current?.fit({ animation: { duration: 250 } });
+  }
+
+  function goToday() {
+    const t = timelineRef.current;
+    if (!t) return;
+    t.moveTo(new Date(), { animation: { duration: 250 } });
+  }
 
   function openCreate() {
     setSelected(null);
@@ -240,7 +254,6 @@ export default function TimelinePage() {
 
   async function confirmDelete() {
     if (!deleteDialog.id) return;
-
     try {
       await http.delete(`/api/Events/${deleteDialog.id}`);
       await load();
@@ -269,7 +282,6 @@ export default function TimelinePage() {
 
   async function submitEdit(payload: EventPayload) {
     if (!selected) throw new Error("No hay evento seleccionado");
-
     try {
       await http.put(`/api/Events/${selected.id}`, payload);
       await load();
@@ -284,36 +296,55 @@ export default function TimelinePage() {
 
   return (
     <Box sx={{ width: "100%" }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3} sx={{ px: 1 }}>
-        <Box>
-          <Typography variant="h4" fontWeight={900}>
-            Timeline histórica
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Ctrl + rueda = zoom · Pasa el ratón para ver imagen · Click para detalles
-          </Typography>
-        </Box>
+      <Paper sx={{ p: { xs: 2, sm: 3 }, mb: 3 }}>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ sm: "center" }}>
+          <Box sx={{ flex: 1 }}>
+            <Typography variant="h4">Timeline</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Ctrl + rueda = zoom · Hover para preview · Click para detalles
+            </Typography>
+          </Box>
 
-        <Button variant="contained" size="large" onClick={openCreate}>
-          Crear evento
-        </Button>
-      </Stack>
+          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+            <Chip label={`${stats.count} eventos`} />
+            <Chip variant="outlined" label={`Rango: ${stats.range}`} />
+            <Button variant="outlined" startIcon={<ZoomOutMapIcon />} onClick={fitAll}>
+              Fit
+            </Button>
+            <Button variant="outlined" startIcon={<TodayIcon />} onClick={goToday}>
+              Hoy
+            </Button>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
+              Crear
+            </Button>
+          </Stack>
+        </Stack>
 
-      <Box
-        ref={containerRef}
-        sx={{
-          bgcolor: "background.paper",
-          borderRadius: 3,
-          boxShadow: 3,
-          p: 1,
-          height: 540,
-          overflow: "hidden",
-        }}
-      />
+        <Stack direction="row" spacing={1} sx={{ mt: 2 }} flexWrap="wrap">
+          <Chip size="small" label="Antigua" className="era-ancient" />
+          <Chip size="small" label="Medieval" className="era-medieval" />
+          <Chip size="small" label="Moderna" className="era-modern" />
+          <Chip size="small" label="Contemporánea" className="era-contemporary" />
+          <Typography variant="caption" color="text.secondary" sx={{ ml: 1, alignSelf: "center" }}>
+            Agrupación automática por año de inicio.
+          </Typography>
+        </Stack>
+      </Paper>
+
+      <Paper sx={{ p: 1 }}>
+        <Box
+          ref={containerRef}
+          sx={{
+            height: 560,
+            overflow: "hidden",
+            borderRadius: 3,
+          }}
+        />
+      </Paper>
 
       {/* VIEW */}
       <Dialog open={viewOpen} onClose={() => setViewOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle sx={{ fontWeight: 900 }}>{selected?.title}</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 950 }}>{selected?.title}</DialogTitle>
         <DialogContent dividers>
           {selected?.imageUrl ? (
             <Box
@@ -391,7 +422,7 @@ export default function TimelinePage() {
 
       {/* DELETE */}
       <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, id: null, title: "" })}>
-        <DialogTitle sx={{ fontWeight: 900 }}>Confirmar eliminación</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 950 }}>Confirmar eliminación</DialogTitle>
         <DialogContent dividers>
           ¿Seguro que quieres borrar <b>{deleteDialog.title}</b>?
         </DialogContent>

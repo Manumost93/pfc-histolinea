@@ -1,20 +1,24 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Box,
   Button,
+  Chip,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   IconButton,
+  Paper,
   Snackbar,
   Stack,
   Typography,
+  Tooltip,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import VisibilityIcon from "@mui/icons-material/Visibility";
+import AddIcon from "@mui/icons-material/Add";
 import EventIcon from "@mui/icons-material/Event";
 import SearchIcon from "@mui/icons-material/Search";
 import {
@@ -37,6 +41,13 @@ function CustomToolbar() {
       </Stack>
     </GridToolbarContainer>
   );
+}
+
+function minMaxDates(rows: HistoricalEvent[]) {
+  if (rows.length === 0) return { min: null as string | null, max: null as string | null };
+  const starts = rows.map((r) => r.startDate).sort();
+  const ends = rows.map((r) => r.endDate ?? r.startDate).sort();
+  return { min: starts[0], max: ends[ends.length - 1] };
 }
 
 export default function EventsPage() {
@@ -82,6 +93,14 @@ export default function EventsPage() {
   useEffect(() => {
     load();
   }, []);
+
+  const stats = useMemo(() => {
+    const { min, max } = minMaxDates(rows);
+    return {
+      count: rows.length,
+      range: min && max ? `${min} → ${max}` : "—",
+    };
+  }, [rows]);
 
   function openCreate() {
     setDialogMode("create");
@@ -149,7 +168,7 @@ export default function EventsPage() {
   }
 
   const columns: GridColDef<HistoricalEvent>[] = [
-    { field: "title", headerName: "Título", flex: 1, minWidth: 260 },
+    { field: "title", headerName: "Título", flex: 1, minWidth: 280 },
     { field: "startDate", headerName: "Inicio", width: 140 },
     { field: "endDate", headerName: "Fin", width: 140 },
     {
@@ -160,17 +179,23 @@ export default function EventsPage() {
       filterable: false,
       renderCell: (params) => (
         <Stack direction="row" spacing={1}>
-          <IconButton size="small" title="Ver" onClick={() => openView(params.row)}>
-            <VisibilityIcon fontSize="small" />
-          </IconButton>
+          <Tooltip title="Ver">
+            <IconButton size="small" onClick={() => openView(params.row)}>
+              <VisibilityIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
 
-          <IconButton size="small" title="Editar" onClick={() => openEdit(params.row)}>
-            <EditIcon fontSize="small" />
-          </IconButton>
+          <Tooltip title="Editar">
+            <IconButton size="small" onClick={() => openEdit(params.row)}>
+              <EditIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
 
-          <IconButton size="small" title="Borrar" onClick={() => openDelete(params.row)}>
-            <DeleteIcon fontSize="small" />
-          </IconButton>
+          <Tooltip title="Borrar">
+            <IconButton size="small" onClick={() => openDelete(params.row)}>
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
         </Stack>
       ),
     },
@@ -178,31 +203,42 @@ export default function EventsPage() {
 
   return (
     <Box sx={{ width: "100%" }}>
-      <Stack
-        direction="row"
-        alignItems="center"
-        justifyContent="space-between"
-        mb={3}
-        sx={{ px: 1 }}
-      >
-        <Stack direction="row" alignItems="center" spacing={1}>
-          <EventIcon color="primary" />
-          <Box>
-            <Typography variant="h4" fontWeight={800}>
-              Eventos históricos
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Gestiona tu colección y visualízala en la timeline.
-            </Typography>
-          </Box>
+      {/* Hero */}
+      <Paper sx={{ p: { xs: 2, sm: 3 }, mb: 3 }}>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ sm: "center" }}>
+          <Stack direction="row" spacing={1.2} alignItems="center" sx={{ flex: 1 }}>
+            <Box
+              sx={{
+                width: 44,
+                height: 44,
+                borderRadius: 3,
+                display: "grid",
+                placeItems: "center",
+                bgcolor: "rgba(122,79,42,0.10)",
+                border: "1px solid rgba(122,79,42,0.18)",
+              }}
+            >
+              <EventIcon />
+            </Box>
+            <Box>
+              <Typography variant="h4">Eventos</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Gestiona tu colección y explórala en timeline.
+              </Typography>
+            </Box>
+          </Stack>
+
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Chip label={`${stats.count} eventos`} />
+            <Chip variant="outlined" label={`Rango: ${stats.range}`} />
+            <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
+              Crear
+            </Button>
+          </Stack>
         </Stack>
+      </Paper>
 
-        <Button variant="contained" size="large" onClick={openCreate}>
-          Crear evento
-        </Button>
-      </Stack>
-
-      <Box sx={{ bgcolor: "background.paper", borderRadius: 2, boxShadow: 2, p: 2 }}>
+      <Paper sx={{ p: 2 }}>
         <DataGrid
           rows={rows}
           columns={columns}
@@ -215,18 +251,21 @@ export default function EventsPage() {
           }}
           sx={{
             border: "none",
-            "& .MuiDataGrid-columnHeaders": { fontWeight: 700 },
+            "& .MuiDataGrid-columnHeaders": { fontWeight: 900 },
             "& .MuiDataGrid-row:hover": { backgroundColor: "rgba(122,79,42,0.05)" },
           }}
         />
 
         {!loading && rows.length === 0 && (
           <Stack alignItems="center" py={5} spacing={1}>
-            <EventIcon sx={{ fontSize: 40, opacity: 0.35 }} />
+            <EventIcon sx={{ fontSize: 44, opacity: 0.35 }} />
             <Typography color="text.secondary">No hay eventos todavía</Typography>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
+              Crear primer evento
+            </Button>
           </Stack>
         )}
-      </Box>
+      </Paper>
 
       {/* CREATE / EDIT */}
       <EventDialog
@@ -239,19 +278,18 @@ export default function EventsPage() {
 
       {/* VIEW */}
       <Dialog open={viewOpen} onClose={() => setViewOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle sx={{ fontWeight: 800 }}>{selected?.title}</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 900 }}>{selected?.title}</DialogTitle>
         <DialogContent dividers>
           {selected?.imageUrl ? (
             <Box
               sx={{
                 width: "100%",
-                height: 260,
+                height: 280,
                 borderRadius: 2,
                 mb: 2,
                 overflow: "hidden",
-                boxShadow: 1,
-                bgcolor: "rgba(122,79,42,0.06)",
                 border: "1px solid rgba(122,79,42,0.15)",
+                bgcolor: "rgba(122,79,42,0.06)",
               }}
             >
               <Box
@@ -262,12 +300,7 @@ export default function EventsPage() {
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).style.display = "none";
                 }}
-                sx={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  display: "block",
-                }}
+                sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
               />
             </Box>
           ) : null}
@@ -302,7 +335,7 @@ export default function EventsPage() {
         open={deleteDialog.open}
         onClose={() => setDeleteDialog({ open: false, id: null, title: "" })}
       >
-        <DialogTitle sx={{ fontWeight: 800 }}>Confirmar eliminación</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 900 }}>Confirmar eliminación</DialogTitle>
         <DialogContent dividers>
           ¿Seguro que quieres borrar <b>{deleteDialog.title}</b>?
         </DialogContent>
