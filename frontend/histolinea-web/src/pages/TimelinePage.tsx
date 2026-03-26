@@ -175,40 +175,42 @@ export default function TimelinePage() {
         const title = escapeHtml(e.title);
         const safeUrl = e.imageUrl ? escapeAttr(e.imageUrl) : null;
 
+        // Miniatura uniforme usando clase CSS global
         const thumb = safeUrl
           ? `
-            <span style="width:36px;height:36px;display:inline-block;flex:0 0 36px;border-radius:10px;overflow:hidden;border:1px solid rgba(122,79,42,0.25);background:rgba(122,79,42,0.08)">
-              <img src="${safeUrl}" style="width:100%;height:100%;display:block;object-fit:cover;" />
-            </span>
+            <div class="timeline-thumb">
+              <img src="${safeUrl}" alt="miniatura evento" />
+            </div>
           `
           : `
-            <span style="width:36px;height:36px;border-radius:10px;display:inline-block;flex:0 0 36px;background:rgba(122,79,42,0.18);border:1px solid rgba(122,79,42,0.25)"></span>
+            <div class="timeline-thumb"></div>
           `;
 
-        const dot = `
-          <span style="width:11px;height:11px;border-radius:999px;display:inline-block;background:${eraInfo.dot};box-shadow:0 0 0 3px rgba(255,255,255,0.95);border:1px solid rgba(0,0,0,0.08)"></span>
-        `;
-
         const content = `
-          <div style="display:flex;align-items:center;gap:10px;">
-            ${dot}
+          <div style="display:flex;align-items:center;gap:10px;padding:6px 10px 6px 6px;background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.07);border:1px solid rgba(122,79,42,0.10);min-width:180px;max-width:260px;">
             ${thumb}
-            <span style="font-weight:900;line-height:1.15;">${title}</span>
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:900;font-size:15px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${title}</div>
+              <div style="font-size:12px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;">${escapeHtml(e.description || "Sin descripción")}</div>
+            </div>
           </div>
         `;
 
+        // Tooltip tipo card
         const tooltip = `
-          <div style="max-width:380px;">
+          <div style="max-width:320px;padding:0;">
             ${
               safeUrl
-                ? `<img src="${safeUrl}" style="width:100%;height:180px;object-fit:cover;border-radius:12px;display:block;margin-bottom:10px;" />`
+                ? `<div style="width:100%;aspect-ratio:4/3;overflow:hidden;border-radius:10px 10px 0 0;background:#f8f5f2;border-bottom:1px solid #e0d6ce;"><img src="${safeUrl}" style="width:100%;height:100%;object-fit:cover;display:block;" /></div>`
                 : ""
             }
-            <div style="font-weight:950;margin-bottom:6px;">${title}</div>
-            <div style="opacity:.85;">${escapeHtml(e.description || "Sin descripción")}</div>
-            <div style="margin-top:10px;opacity:.75;font-size:12px;">
-              <b>${escapeHtml(e.startDate)}</b>${e.endDate ? " → <b>" + escapeHtml(e.endDate) + "</b>" : ""}
-              · Época: <b>${escapeHtml(eraInfo.label)}</b>
+            <div style="padding:10px 12px 8px 12px;">
+              <div style="font-weight:950;margin-bottom:4px;font-size:16px;">${title}</div>
+              <div style="opacity:.85;font-size:13px;">${escapeHtml(e.description || "Sin descripción")}</div>
+              <div style="margin-top:8px;opacity:.75;font-size:12px;">
+                <b>${escapeHtml(e.startDate)}</b>${e.endDate ? " → <b>" + escapeHtml(e.endDate) + "</b>" : ""}
+                · Época: <b>${escapeHtml(eraInfo.label)}</b>
+              </div>
             </div>
           </div>
         `;

@@ -121,3 +121,4 @@ Frontend:
 - Tests unitarios y de integracion
 - CI/CD y despliegue automatico
 - Modo offline y cache local
+
