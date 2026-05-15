@@ -21,6 +21,7 @@ import {
   TextField,
   Divider,
 } from "@mui/material";
+import type { SelectChangeEvent } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import VisibilityIcon from "@mui/icons-material/Visibility";
@@ -279,7 +280,13 @@ export default function EventsPage() {
         <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ sm: "center" }}>
           <FormControl size="small" sx={{ minWidth: 200 }}>
             <InputLabel>Época</InputLabel>
-            <Select value={era} label="Época" onChange={(e) => setEra(e.target.value as any)}>
+            <Select
+              value={era}
+              label="Época"
+              onChange={(e: SelectChangeEvent<"all" | EraKey>) =>
+                setEra(e.target.value as "all" | EraKey)
+              }
+            >
               {ERA_OPTIONS.map((opt) => (
                 <MenuItem key={opt.value} value={opt.value}>
                   {opt.label}

@@ -48,6 +48,13 @@ export default function EventDialog({ open, mode, initial, onClose, onSubmit }: 
   const [sourceUrl, setSourceUrl] = useState("");
   const [saving, setSaving] = useState(false);
   const [imgOk, setImgOk] = useState(true);
+  const [errors, setErrors] = useState<{
+    title?: string;
+    startDate?: string;
+    endDate?: string;
+    imageUrl?: string;
+    sourceUrl?: string;
+  }>({});
 
   useEffect(() => {
     if (!open) return;
@@ -70,19 +77,22 @@ export default function EventDialog({ open, mode, initial, onClose, onSubmit }: 
   const sourceUrlError = !isValidUrl(sourceUrl) ? "URL inválida" : "";
 
   async function handleSave() {
-    if (!title.trim()) {
-      alert("El título es obligatorio");
-      return;
+    const nextErrors: typeof errors = {};
+
+    if (!title.trim()) nextErrors.title = "El título es obligatorio";
+    if (!startDate) nextErrors.startDate = "La fecha de inicio es obligatoria";
+    if (imageUrlError) nextErrors.imageUrl = imageUrlError;
+    if (sourceUrlError) nextErrors.sourceUrl = sourceUrlError;
+    if (startDate && endDate && endDate < startDate) {
+      nextErrors.endDate = "La fecha de fin no puede ser anterior a la fecha de inicio";
     }
-    if (!startDate) {
-      alert("La fecha de inicio es obligatoria");
-      return;
-    }
-    if (imageUrlError || sourceUrlError) {
-      alert("Revisa las URLs (no son válidas).");
+
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
       return;
     }
 
+    setErrors({});
     setSaving(true);
     try {
       await onSubmit({
@@ -108,7 +118,12 @@ export default function EventDialog({ open, mode, initial, onClose, onSubmit }: 
           <TextField
             label="Título *"
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              setErrors((prev) => ({ ...prev, title: undefined }));
+            }}
+            error={!!errors.title}
+            helperText={errors.title}
             autoFocus
             fullWidth
           />
@@ -127,7 +142,12 @@ export default function EventDialog({ open, mode, initial, onClose, onSubmit }: 
               label="Inicio *"
               type="date"
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                setErrors((prev) => ({ ...prev, startDate: undefined, endDate: undefined }));
+              }}
+              error={!!errors.startDate}
+              helperText={errors.startDate}
               InputLabelProps={{ shrink: true }}
               fullWidth
             />
@@ -135,7 +155,12 @@ export default function EventDialog({ open, mode, initial, onClose, onSubmit }: 
               label="Fin"
               type="date"
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                setErrors((prev) => ({ ...prev, endDate: undefined }));
+              }}
+              error={!!errors.endDate}
+              helperText={errors.endDate}
               InputLabelProps={{ shrink: true }}
               fullWidth
             />
@@ -147,9 +172,10 @@ export default function EventDialog({ open, mode, initial, onClose, onSubmit }: 
             onChange={(e) => {
               setImageUrl(e.target.value);
               setImgOk(true);
+              setErrors((prev) => ({ ...prev, imageUrl: undefined }));
             }}
-            error={!!imageUrlError}
-            helperText={imageUrlError || "Se mostrará una miniatura en la timeline y un banner en detalle."}
+            error={!!imageUrlError || !!errors.imageUrl}
+            helperText={errors.imageUrl ?? imageUrlError ?? "Se mostrará una miniatura en la timeline y un banner en detalle."}
             fullWidth
           />
 
@@ -186,9 +212,12 @@ export default function EventDialog({ open, mode, initial, onClose, onSubmit }: 
           <TextField
             label="Source URL"
             value={sourceUrl}
-            onChange={(e) => setSourceUrl(e.target.value)}
-            error={!!sourceUrlError}
-            helperText={sourceUrlError || "Enlace a Wikipedia, libro, artículo, etc."}
+            onChange={(e) => {
+              setSourceUrl(e.target.value);
+              setErrors((prev) => ({ ...prev, sourceUrl: undefined }));
+            }}
+            error={!!sourceUrlError || !!errors.sourceUrl}
+            helperText={errors.sourceUrl ?? sourceUrlError ?? "Enlace a Wikipedia, libro, artículo, etc."}
             fullWidth
           />
         </Stack>

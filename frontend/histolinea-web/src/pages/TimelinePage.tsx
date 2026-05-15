@@ -19,6 +19,7 @@ import {
   Select,
   TextField,
 } from "@mui/material";
+import type { SelectChangeEvent } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import TodayIcon from "@mui/icons-material/Today";
 import ZoomOutMapIcon from "@mui/icons-material/ZoomOutMap";
@@ -40,6 +41,10 @@ type EventPayload = {
   endDate: string | null;
   imageUrl: string | null;
   sourceUrl: string | null;
+};
+
+type TimelineSelectProps = {
+  items?: string[];
 };
 
 function escapeHtml(s: string) {
@@ -138,7 +143,7 @@ export default function TimelinePage() {
       margin: { item: 12 },
     });
 
-    timeline.on("select", (props: any) => {
+    timeline.on("select", (props: TimelineSelectProps) => {
       const id = props.items?.[0];
       if (!id) return;
 
@@ -351,7 +356,13 @@ export default function TimelinePage() {
         <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ sm: "center" }}>
           <FormControl size="small" sx={{ minWidth: 200 }}>
             <InputLabel>Época</InputLabel>
-            <Select value={era} label="Época" onChange={(e) => setEra(e.target.value as any)}>
+            <Select
+              value={era}
+              label="Época"
+              onChange={(e: SelectChangeEvent<"all" | EraKey>) =>
+                setEra(e.target.value as "all" | EraKey)
+              }
+            >
               {ERA_OPTIONS.map((opt) => (
                 <MenuItem key={opt.value} value={opt.value}>
                   {opt.label}
@@ -413,6 +424,20 @@ export default function TimelinePage() {
           }}
         />
       </Paper>
+
+      {filteredEvents.length === 0 && (
+        <Paper sx={{ mt: 2, p: 4, textAlign: "center" }}>
+          <Typography variant="h6" sx={{ mb: 1 }}>
+            No hay eventos para mostrar
+          </Typography>
+          <Typography color="text.secondary" sx={{ mb: 2 }}>
+            Crea nuevos eventos desde el botón "Crear" o ajusta los filtros.
+          </Typography>
+          <Button variant="contained" onClick={openCreate} startIcon={<AddIcon />}>
+            Crear evento
+          </Button>
+        </Paper>
+      )}
 
       {/* VIEW */}
       <Dialog open={viewOpen} onClose={() => setViewOpen(false)} fullWidth maxWidth="sm">

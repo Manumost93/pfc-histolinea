@@ -11,7 +11,9 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.AddDbContext<HistolineaDbContext>(options =>
 {
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"));
+    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+        ?? "Data Source=histolinea.dev.db";
+    options.UseSqlite(connectionString);
 });
 
 builder.Services.AddCors(options =>

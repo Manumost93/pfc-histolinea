@@ -86,21 +86,17 @@ npm --version
 
 ## 6. Como iniciar el proyecto rapidamente
 
-### En Windows
+### Script principal
 
-Desde la raiz del proyecto ejecuta:
+El script más fácil para arrancar todo el proyecto es:
 
 ```cmd
 scripts\run-all.cmd
 ```
 
-Esto arranca el backend en http://localhost:5273 y el frontend en http://localhost:5173.
-
-### Reiniciar la base de datos
-
-```cmd
-scripts\reset-db.cmd
-```
+Este comando abre dos ventanas de terminal separadas:
+- `HistoLinea Backend` en `http://localhost:5273`
+- `HistoLinea Frontend` en `http://localhost:5173`
 
 ### Solo backend
 
@@ -108,10 +104,19 @@ scripts\reset-db.cmd
 scripts\run-backend.cmd
 ```
 
+Este script intentará usar `dotnet` desde el PATH y, si no lo encuentra,
+utilizará `%ProgramFiles%\dotnet\dotnet.exe` automáticamente.
+
 ### Solo frontend
 
 ```cmd
 scripts\run-frontend.cmd
+```
+
+### Reiniciar la base de datos
+
+```cmd
+scripts\reset-db.cmd
 ```
 
 ### En Linux o macOS
