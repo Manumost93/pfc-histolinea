@@ -1,124 +1,243 @@
 # HistoLinea (PFC DAM)
 
-HistoLinea es una aplicacion web para gestionar eventos historicos y visualizarlos tanto en una lista como en una timeline interactiva.
-
 Autor: Manuel Honrado Vega
+Grado Superior en Desarrollo de Aplicaciones Multiplataforma
+Universidad Alfonso X el Sabio
 
-## Capturas
-- docs/assets/eventos.png
-- docs/assets/timeline.png
+HistoLinea es una aplicacion web para gestionar eventos historicos de forma sencilla. La idea es que el proyecto se pueda ejecutar en local, ser facil de usar y quedar bien explicado en la defensa.
 
-## Arquitectura
-```mermaid
-flowchart LR
-  U[Usuario] --> F[Frontend React + Vite]
-  F -->|HTTP| A[ASP.NET Core Web API]
-  A --> D[(SQLite)]
-  A --> SW[Swagger]
-```
+---
 
-## Stack
-Backend
+## 1. Que hace el proyecto
+
+HistoLinea permite:
+- crear eventos historicos,
+- editar eventos,
+- verlos en una lista ordenada,
+- filtrar por epoca y fechas,
+- explorar los eventos en una linea de tiempo interactiva.
+
+Este proyecto muestra una solucion full-stack con backend en .NET y frontend en React.
+
+---
+
+## 2. Tecnologias usadas
+
+### Backend
 - ASP.NET Core Web API (.NET 8)
 - Entity Framework Core 8
-- SQLite (desarrollo)
-- Swagger (solo en Development)
+- SQLite local
+- Swagger en modo Development
 
-Frontend
+### Frontend
 - React 19 + TypeScript
 - Vite 5
-- Material UI (MUI) 7 + MUI DataGrid
+- Material UI 7
+- MUI DataGrid
 - Axios
-- vis-timeline (timeline interactiva)
+- vis-timeline
 
-## Estructura del repositorio
-- backend/ -> solucion .NET (Histolinea.sln) y proyectos por capas:
-  - Histolinea.Api
-  - Histolinea.Application
-  - Histolinea.Domain
-  - Histolinea.Infrastructure
-- frontend/ -> aplicacion React (histolinea-web)
-- docs/ -> documentacion del proyecto (incluye contexto y notas)
+---
 
-## Modelo principal
-HistoricalEvent
-- id (Guid)
-- title (string)
-- description (string?)
-- startDate (DateOnly)
-- endDate (DateOnly?)
-- imageUrl (string?)
-- sourceUrl (string?)
-- createdAtUtc (DateTime)
+## 3. Estructura del proyecto
 
-## API (endpoints)
-- GET /api/Events -> lista ordenada por startDate
-- GET /api/Events/{id} -> detalle
-- POST /api/Events -> crear
-- PUT /api/Events/{id} -> editar
-- DELETE /api/Events/{id} -> borrar
+- backend/
+  - Histolinea.Api/ -> API REST y configuracion
+  - Histolinea.Application/ -> DTOs y validaciones
+  - Histolinea.Domain/ -> entidad principal
+  - Histolinea.Infrastructure/ -> DbContext y migraciones
+- frontend/histolinea-web/ -> aplicacion React
+- docs/ -> documentacion y notas del proyecto
 
-## Requisitos
-- Windows 10/11, macOS o Linux
-- .NET SDK 8.x (verifica con: dotnet --version)
-- Node.js 20+ y npm (verifica con: node --version y npm --version)
-- dotnet-ef (solo para aplicar migraciones)
+---
 
-Instalacion de dotnet-ef:
-- dotnet tool install --global dotnet-ef
+## 4. Modelo de datos principal
 
-Checklist antes de ejecutar:
-- dotnet --version
-- node --version
-- npm --version
-- dotnet ef --version
+Entidad: HistoricalEvent
+- Id (Guid)
+- Title (string)
+- Description (string?)
+- StartDate (DateOnly)
+- EndDate (DateOnly?)
+- ImageUrl (string?)
+- SourceUrl (string?)
+- CreatedAtUtc (DateTime)
 
-Descargas oficiales:
-- .NET SDK: https://dotnet.microsoft.com/download
-- Node.js: https://nodejs.org/en/download
+---
 
-## Arranque rapido (scripts)
-En Windows:
-1) scripts\run-all.cmd
+## 5. Requisitos minimos
 
-Reset de base de datos (forzar seed):
-- scripts\reset-db.cmd
+Necesitas:
+- .NET SDK 8.x
+- Node.js 20 o superior
+- npm
 
-En Bash:
-1) ./scripts/run-all.sh
+El proyecto funciona en Windows, macOS y Linux.
 
-Reset de base de datos (forzar seed):
-- ./scripts/reset-db.sh
+### Verificar el entorno
 
-Los scripts levantan backend y frontend. La API corre en http://localhost:5273 y el frontend en http://localhost:5173.
+```bash
+dotnet --version
+node --version
+npm --version
+```
 
-## Arranque manual (paso a paso)
-Backend:
-1) dotnet restore backend\Histolinea.sln
-2) dotnet ef database update -p backend\src\Histolinea.Infrastructure -s backend\src\Histolinea.Api
-3) dotnet run --project backend\src\Histolinea.Api
+---
 
-Frontend:
-1) cd frontend/histolinea-web
-2) npm install
-3) npm run dev
+## 6. Como iniciar el proyecto rapidamente
 
-## Notas
-- La base de datos SQLite se crea como histolinea.dev.db en el directorio desde el que se ejecuta la API (los scripts la crean en la raiz del repo).
-- Swagger queda disponible en http://localhost:5273/swagger.
+### En Windows
 
-## Problemas comunes
-- Si dotnet ef no se reconoce, cierra y abre la terminal, o ejecuta dotnet tool update --global dotnet-ef.
-- Si el puerto 5273 esta ocupado, cambia el puerto en backend/src/Histolinea.Api/Properties/launchSettings.json.
-- Si no ves imagenes, verifica que existen en frontend/histolinea-web/public/images y recarga el frontend.
+Desde la raiz del proyecto ejecuta:
 
-## Futuras mejoras
-- Autenticacion y roles (JWT)
-- Filtros avanzados y busqueda por periodos
-- Exportacion de eventos (CSV/PDF)
-- Edicion por lotes y versionado de cambios
-- Soporte multi-idioma (ES/EN)
-- Tests unitarios y de integracion
-- CI/CD y despliegue automatico
-- Modo offline y cache local
+```cmd
+scripts\run-all.cmd
+```
 
+Esto arranca el backend en http://localhost:5273 y el frontend en http://localhost:5173.
+
+### Reiniciar la base de datos
+
+```cmd
+scripts\reset-db.cmd
+```
+
+### Solo backend
+
+```cmd
+scripts\run-backend.cmd
+```
+
+### Solo frontend
+
+```cmd
+scripts\run-frontend.cmd
+```
+
+### En Linux o macOS
+
+```bash
+./scripts/run-all.sh
+./scripts/reset-db.sh
+```
+
+---
+
+## 7. Inicio manual paso a paso
+
+### Backend
+
+```bash
+cd backend
+
+dotnet restore Histolinea.sln
+
+dotnet ef database update -p src/Histolinea.Infrastructure -s src/Histolinea.Api
+
+dotnet run --project src/Histolinea.Api
+```
+
+### Frontend
+
+```bash
+cd frontend/histolinea-web
+npm install
+npm run dev
+```
+
+---
+
+## 8. Configuracion del frontend
+
+El frontend puede leer la direccion del backend desde un archivo .env.
+
+Copia:
+
+```bash
+frontend/histolinea-web/.env.example
+```
+
+a:
+
+```bash
+frontend/histolinea-web/.env
+```
+
+Y cambia el valor si usas otro puerto o servidor:
+
+```env
+VITE_API_URL=http://localhost:5273
+```
+
+Si no creas .env, el frontend usa http://localhost:5273.
+
+---
+
+## 9. Endpoints disponibles
+
+- GET /api/Events -> lista de eventos ordenados por fecha de inicio
+- GET /api/Events/{id} -> detalle del evento
+- POST /api/Events -> crear un evento
+- PUT /api/Events/{id} -> actualizar un evento
+- DELETE /api/Events/{id} -> borrar un evento
+
+---
+
+## 10. Que hace cada parte
+
+### Pagina de eventos
+
+- Lista los eventos con busqueda rapida.
+- Permite filtrar por epoca y fechas.
+- Permite crear, editar y borrar eventos.
+- Incluye un dialogo de detalle con imagen y enlace a la fuente.
+
+### Pagina de timeline
+
+- Muestra los eventos en una linea de tiempo interactiva.
+- Permite hacer zoom con Ctrl + rueda.
+- Incluye botones Fit y Hoy.
+- Permite ver los detalles al hacer clic en un evento.
+- Permite crear y editar eventos desde la misma vista.
+
+### Formulario de evento
+
+Comprueba:
+- titulo obligatorio,
+- fecha de inicio obligatoria,
+- fecha de fin no anterior a fecha de inicio,
+- URLs validas para imagen y fuente.
+
+---
+
+## 11. Cambios recientes y mejoras
+
+- Anadi VITE_API_URL para que el frontend pueda cambiar la URL del backend sin tocar el codigo.
+- Anadi frontend/histolinea-web/.env.example para facilitar la configuracion.
+- Mejore la validacion del formulario para mostrar errores en cada campo.
+- Quite archivos de plantilla innecesarios en el backend (Class1.cs).
+- Corregi los archivos DTO CreateHistoricalEventDto.cs y UpdateHistoricalEventDto.cs.
+- Anadi .eslintrc.cjs para configuracion basica de lint en el frontend.
+- Mejore la experiencia de la timeline con un mensaje cuando no hay eventos.
+- Cambie index.html para usar lang="es" y mejorar los metadatos.
+- Actualice .gitignore para ignorar node_modules, dist y bases de datos locales.
+
+---
+
+## 12. Archivos importantes
+
+- backend/src/Histolinea.Api/Program.cs -> configuracion de la API y seed de datos.
+- backend/src/Histolinea.Application/DTOs/CreateHistoricalEventDto.cs -> validacion de creacion.
+- backend/src/Histolinea.Application/DTOs/UpdateHistoricalEventDto.cs -> validacion de edicion.
+- backend/src/Histolinea.Domain/Entities/HistoricalEvent.cs -> modelo principal.
+- backend/src/Histolinea.Infrastructure/Persistence/HistolineaDbContext.cs -> configuracion de EF Core.
+- frontend/histolinea-web/src/App.tsx -> estructura y navegacion.
+- frontend/histolinea-web/src/pages/EventsPage.tsx -> lista y CRUD de eventos.
+- frontend/histolinea-web/src/pages/TimelinePage.tsx -> timeline interactiva.
+- frontend/histolinea-web/src/components/EventDialog.tsx -> formulario de evento.
+
+---
+
+## 13. Estado actual
+
+El proyecto esta listo para funcionar en local y presentarse como trabajo de fin de grado. Esta diseñado para ser facil de ejecutar y para mantener un flujo claro de uso.
