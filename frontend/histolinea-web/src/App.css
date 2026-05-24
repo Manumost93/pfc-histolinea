@@ -1,0 +1,4 @@
+/* CSS neutro: no tocar layout, lo gestiona MUI */
+#root {
+  min-height: 100%;
+}
