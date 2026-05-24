@@ -1,7 +1,6 @@
 export type EraKey = "ancient" | "medieval" | "modern" | "contemporary";
 
 export function yearFromDateOnly(dateOnly: string): number | null {
-  // dateOnly esperado "YYYY-MM-DD"
   if (!dateOnly || dateOnly.length < 4) return null;
   const y = Number(dateOnly.slice(0, 4));
   return Number.isFinite(y) ? y : null;
@@ -12,17 +11,15 @@ export function getEraByYear(year: number): {
   label: string;
   className: string;
   dot: string;
+  color: string;
 } {
-  // Antigua: < 476
-  // Medieval: 476 - 1491
-  // Moderna: 1492 - 1788
-  // Contemporánea: >= 1789
   if (year < 476)
     return {
       key: "ancient",
       label: "Antigua",
       className: "era-ancient",
       dot: "rgba(46,125,50,0.9)",
+      color: "#2e7d32",
     };
   if (year < 1492)
     return {
@@ -30,6 +27,7 @@ export function getEraByYear(year: number): {
       label: "Medieval",
       className: "era-medieval",
       dot: "rgba(109,76,65,0.95)",
+      color: "#6d4c41",
     };
   if (year < 1789)
     return {
@@ -37,12 +35,14 @@ export function getEraByYear(year: number): {
       label: "Moderna",
       className: "era-modern",
       dot: "rgba(21,101,192,0.9)",
+      color: "#1565c0",
     };
   return {
     key: "contemporary",
     label: "Contemporánea",
     className: "era-contemporary",
     dot: "rgba(106,27,154,0.9)",
+    color: "#6a1b9a",
   };
 }
 
@@ -51,10 +51,6 @@ export function getEraByStartDate(startDate: string) {
   return getEraByYear(y);
 }
 
-/**
- * Devuelve true si el evento (start..end) solapa con el rango [from..to].
- * Comparación lexicográfica funciona para YYYY-MM-DD.
- */
 export function overlapsRange(params: {
   startDate: string;
   endDate?: string | null;
@@ -62,10 +58,8 @@ export function overlapsRange(params: {
   to?: string;
 }) {
   const { startDate, endDate, from, to } = params;
-
   const evStart = startDate;
   const evEnd = endDate ?? startDate;
-
   if (from && evEnd < from) return false;
   if (to && evStart > to) return false;
   return true;

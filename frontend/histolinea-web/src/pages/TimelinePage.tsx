@@ -24,6 +24,8 @@ import AddIcon from "@mui/icons-material/Add";
 import TodayIcon from "@mui/icons-material/Today";
 import ZoomOutMapIcon from "@mui/icons-material/ZoomOutMap";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import EditIcon from "@mui/icons-material/Edit";
 import { DataSet } from "vis-data";
 import { Timeline } from "vis-timeline/standalone";
 import "vis-timeline/styles/vis-timeline-graph2d.css";
@@ -58,12 +60,26 @@ function escapeAttr(s: string) {
     .replaceAll(">", "&gt;");
 }
 
+function formatDate(d: string | null | undefined): string {
+  if (!d) return "—";
+  const [y, m, day] = d.split("-");
+  if (!y || !m || !day) return d;
+  return `${day}/${m}/${y}`;
+}
+
 function minMaxDates(rows: HistoricalEvent[]) {
   if (rows.length === 0) return { min: null as string | null, max: null as string | null };
   const starts = rows.map((r) => r.startDate).sort();
   const ends = rows.map((r) => r.endDate ?? r.startDate).sort();
   return { min: starts[0], max: ends[ends.length - 1] };
 }
+
+const ERA_COLORS: Record<EraKey, string> = {
+  ancient: "#2e7d32",
+  medieval: "#6d4c41",
+  modern: "#1565c0",
+  contemporary: "#6a1b9a",
+};
 
 export default function TimelinePage() {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -72,7 +88,6 @@ export default function TimelinePage() {
   const [events, setEvents] = useState<HistoricalEvent[]>([]);
   const eventsRef = useRef<HistoricalEvent[]>([]);
 
-  // Filters
   const [era, setEra] = useState<"all" | EraKey>("all");
   const [from, setFrom] = useState<string>("");
   const [to, setTo] = useState<string>("");
@@ -105,30 +120,21 @@ export default function TimelinePage() {
     }
   }
 
-  useEffect(() => {
-    load();
-  }, []);
+  useEffect(() => { load(); }, []);
 
-  // 🔑 Para que el "select" siempre busque en lo que se ve (filtrado)
   const filteredEvents = useMemo(() => {
     const f = from.trim() || undefined;
     const t = to.trim() || undefined;
-
     return events.filter((e) => {
       const evEra = getEraByStartDate(e.startDate).key;
       if (era !== "all" && evEra !== era) return false;
-
       if (!overlapsRange({ startDate: e.startDate, endDate: e.endDate, from: f, to: t })) return false;
-
       return true;
     });
   }, [events, era, from, to]);
 
-  useEffect(() => {
-    eventsRef.current = filteredEvents;
-  }, [filteredEvents]);
+  useEffect(() => { eventsRef.current = filteredEvents; }, [filteredEvents]);
 
-  // Crear timeline una sola vez
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -146,10 +152,8 @@ export default function TimelinePage() {
     timeline.on("select", (props: TimelineSelectProps) => {
       const id = props.items?.[0];
       if (!id) return;
-
       const ev = eventsRef.current.find((x) => x.id === id);
       if (!ev) return;
-
       setSelected(ev);
       setViewOpen(true);
     });
@@ -176,45 +180,35 @@ export default function TimelinePage() {
     return new DataSet(
       filteredEvents.map((e) => {
         const eraInfo = getEraByStartDate(e.startDate);
-
         const title = escapeHtml(e.title);
         const safeUrl = e.imageUrl ? escapeAttr(e.imageUrl) : null;
 
-        // Miniatura uniforme usando clase CSS global
         const thumb = safeUrl
-          ? `
-            <div class="timeline-thumb">
-              <img src="${safeUrl}" alt="miniatura evento" />
-            </div>
-          `
-          : `
-            <div class="timeline-thumb"></div>
-          `;
+          ? `<div class="timeline-thumb"><img src="${safeUrl}" alt="miniatura" /></div>`
+          : `<div class="timeline-thumb"></div>`;
 
         const content = `
-          <div style="display:flex;align-items:center;gap:10px;padding:6px 10px 6px 6px;background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.07);border:1px solid rgba(122,79,42,0.10);min-width:180px;max-width:260px;">
+          <div style="display:flex;align-items:center;gap:10px;padding:6px 10px 6px 6px;border-radius:12px;min-width:180px;max-width:260px;">
             ${thumb}
             <div style="flex:1;min-width:0;">
-              <div style="font-weight:900;font-size:15px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${title}</div>
-              <div style="font-size:12px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;">${escapeHtml(e.description || "Sin descripción")}</div>
+              <div style="font-weight:900;font-size:14px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${title}</div>
+              <div style="font-size:11px;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;">${escapeHtml(e.description || "Sin descripción")}</div>
             </div>
           </div>
         `;
 
-        // Tooltip tipo card
         const tooltip = `
-          <div style="max-width:320px;padding:0;">
-            ${
-              safeUrl
-                ? `<div style="width:100%;aspect-ratio:4/3;overflow:hidden;border-radius:10px 10px 0 0;background:#f8f5f2;border-bottom:1px solid #e0d6ce;"><img src="${safeUrl}" style="width:100%;height:100%;object-fit:cover;display:block;" /></div>`
-                : ""
-            }
-            <div style="padding:10px 12px 8px 12px;">
-              <div style="font-weight:950;margin-bottom:4px;font-size:16px;">${title}</div>
-              <div style="opacity:.85;font-size:13px;">${escapeHtml(e.description || "Sin descripción")}</div>
-              <div style="margin-top:8px;opacity:.75;font-size:12px;">
-                <b>${escapeHtml(e.startDate)}</b>${e.endDate ? " → <b>" + escapeHtml(e.endDate) + "</b>" : ""}
-                · Época: <b>${escapeHtml(eraInfo.label)}</b>
+          <div style="max-width:320px;font-family:Inter,system-ui,sans-serif;">
+            ${safeUrl
+              ? `<div style="width:100%;aspect-ratio:16/9;overflow:hidden;border-radius:10px 10px 0 0;background:#f8f5f2;"><img src="${safeUrl}" style="width:100%;height:100%;object-fit:cover;display:block;" /></div>`
+              : ""}
+            <div style="padding:12px 14px 10px 14px;">
+              <div style="font-weight:900;margin-bottom:5px;font-size:15px;line-height:1.25;">${title}</div>
+              <div style="opacity:.80;font-size:12.5px;line-height:1.5;">${escapeHtml(e.description || "Sin descripción")}</div>
+              <div style="margin-top:10px;opacity:.65;font-size:11px;display:flex;gap:6px;flex-wrap:wrap;">
+                <span>📅 <b>${escapeHtml(e.startDate)}</b>${e.endDate ? " → <b>" + escapeHtml(e.endDate) + "</b>" : ""}</span>
+                <span>·</span>
+                <span>${escapeHtml(eraInfo.label)}</span>
               </div>
             </div>
           </div>
@@ -237,7 +231,7 @@ export default function TimelinePage() {
     if (!timelineRef.current) return;
     timelineRef.current.setGroups(groups);
     timelineRef.current.setItems(items);
-    if (filteredEvents.length > 0) timelineRef.current.fit({ animation: { duration: 250 } });
+    if (filteredEvents.length > 0) timelineRef.current.fit({ animation: { duration: 300 } });
   }, [groups, items, filteredEvents.length]);
 
   const stats = useMemo(() => {
@@ -248,16 +242,10 @@ export default function TimelinePage() {
     };
   }, [filteredEvents]);
 
-  function fitAll() {
-    timelineRef.current?.fit({ animation: { duration: 250 } });
-  }
-
+  function fitAll() { timelineRef.current?.fit({ animation: { duration: 300 } }); }
   function goToday() {
-    const t = timelineRef.current;
-    if (!t) return;
-    t.moveTo(new Date(), { animation: { duration: 250 } });
+    timelineRef.current?.moveTo(new Date(), { animation: { duration: 300 } });
   }
-
   function resetFilters() {
     setEra("all");
     setFrom("");
@@ -266,17 +254,12 @@ export default function TimelinePage() {
 
   const hasActiveFilters = era !== "all" || !!from.trim() || !!to.trim();
 
-  function openCreate() {
-    setSelected(null);
-    setCreateOpen(true);
-  }
-
+  function openCreate() { setSelected(null); setCreateOpen(true); }
   function openEditFromView() {
     if (!selected) return;
     setViewOpen(false);
     setEditOpen(true);
   }
-
   function openDeleteFromView() {
     if (!selected) return;
     setDeleteDialog({ open: true, id: selected.id, title: selected.title });
@@ -324,19 +307,23 @@ export default function TimelinePage() {
     }
   }
 
+  const selectedEra = selected ? getEraByStartDate(selected.startDate) : null;
+
   return (
     <Box sx={{ width: "100%" }}>
+
+      {/* Cabecera */}
       <Paper sx={{ p: { xs: 2, sm: 3 }, mb: 3 }}>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ sm: "center" }}>
           <Box sx={{ flex: 1 }}>
             <Typography variant="h4">Timeline</Typography>
             <Typography variant="body2" color="text.secondary">
-              Ctrl + rueda = zoom · Hover para preview · Click para detalles
+              Ctrl + rueda = zoom &nbsp;·&nbsp; Hover para preview &nbsp;·&nbsp; Click para detalles
             </Typography>
           </Box>
 
           <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-            <Chip label={`${stats.count} eventos`} />
+            <Chip label={`${stats.count} evento${stats.count !== 1 ? "s" : ""}`} />
             <Chip variant="outlined" label={`Rango: ${stats.range}`} />
             <Button variant="outlined" startIcon={<ZoomOutMapIcon />} onClick={fitAll}>
               Fit
@@ -352,7 +339,7 @@ export default function TimelinePage() {
 
         <Divider sx={{ my: 2 }} />
 
-        {/* Filters */}
+        {/* Filtros */}
         <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ sm: "center" }}>
           <FormControl size="small" sx={{ minWidth: 200 }}>
             <InputLabel>Época</InputLabel>
@@ -401,56 +388,86 @@ export default function TimelinePage() {
           </Button>
         </Stack>
 
-        <Stack direction="row" spacing={1} sx={{ mt: 2 }} flexWrap="wrap">
-          <Chip size="small" label="Antigua" className="era-ancient" />
-          <Chip size="small" label="Medieval" className="era-medieval" />
-          <Chip size="small" label="Moderna" className="era-modern" />
-          <Chip size="small" label="Contemporánea" className="era-contemporary" />
+        {/* Leyenda de épocas */}
+        <Stack direction="row" spacing={1} sx={{ mt: 2 }} flexWrap="wrap" alignItems="center">
+          {(Object.entries(ERA_COLORS) as [EraKey, string][]).map(([key, color]) => {
+            const label = ERA_OPTIONS.find((o) => o.value === key)?.label ?? key;
+            return (
+              <Chip
+                key={key}
+                size="small"
+                label={label}
+                sx={{ bgcolor: color, color: "#fff", fontWeight: 700, fontSize: 11 }}
+              />
+            );
+          })}
           {hasActiveFilters && (
-            <Typography variant="caption" color="text.secondary" sx={{ ml: 1, alignSelf: "center" }}>
-              Mostrando {filteredEvents.length} de {events.length} eventos.
+            <Typography variant="caption" color="text.secondary" sx={{ alignSelf: "center", ml: 0.5 }}>
+              Mostrando {filteredEvents.length} de {events.length}
             </Typography>
           )}
         </Stack>
       </Paper>
 
-      <Paper sx={{ p: 1 }}>
+      {/* Timeline */}
+      <Paper sx={{ p: 1.5 }}>
         <Box
           ref={containerRef}
-          sx={{
-            height: 560,
-            overflow: "hidden",
-            borderRadius: 3,
-          }}
+          sx={{ height: 560, overflow: "hidden", borderRadius: 2.5 }}
         />
       </Paper>
 
       {filteredEvents.length === 0 && (
-        <Paper sx={{ mt: 2, p: 4, textAlign: "center" }}>
-          <Typography variant="h6" sx={{ mb: 1 }}>
+        <Paper sx={{ mt: 2.5, p: 5, textAlign: "center" }}>
+          <Typography variant="h6" sx={{ mb: 1, opacity: 0.7 }}>
             No hay eventos para mostrar
           </Typography>
-          <Typography color="text.secondary" sx={{ mb: 2 }}>
-            Crea nuevos eventos desde el botón "Crear" o ajusta los filtros.
+          <Typography color="text.secondary" sx={{ mb: 2.5 }}>
+            Crea nuevos eventos o ajusta los filtros activos.
           </Typography>
-          <Button variant="contained" onClick={openCreate} startIcon={<AddIcon />}>
-            Crear evento
-          </Button>
+          <Stack direction="row" spacing={1} justifyContent="center">
+            {hasActiveFilters && (
+              <Button variant="outlined" onClick={resetFilters} startIcon={<RestartAltIcon />}>
+                Limpiar filtros
+              </Button>
+            )}
+            <Button variant="contained" onClick={openCreate} startIcon={<AddIcon />}>
+              Crear evento
+            </Button>
+          </Stack>
         </Paper>
       )}
 
       {/* VIEW */}
       <Dialog open={viewOpen} onClose={() => setViewOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle sx={{ fontWeight: 950 }}>{selected?.title}</DialogTitle>
+        <DialogTitle
+          sx={{ fontWeight: 950, display: "flex", alignItems: "center", gap: 1.5, pb: 1 }}
+        >
+          {selected?.title}
+          {selectedEra && (
+            <Chip
+              size="small"
+              label={selectedEra.label}
+              sx={{
+                bgcolor: ERA_COLORS[selectedEra.key],
+                color: "#fff",
+                fontWeight: 700,
+                fontSize: 11,
+                ml: "auto",
+                flexShrink: 0,
+              }}
+            />
+          )}
+        </DialogTitle>
         <DialogContent dividers>
           {selected?.imageUrl ? (
             <Box
               sx={{
                 width: "100%",
-                height: 280,
+                height: 260,
                 borderRadius: 2,
                 overflow: "hidden",
-                mb: 2,
+                mb: 2.5,
                 border: "1px solid rgba(122,79,42,0.15)",
                 bgcolor: "rgba(122,79,42,0.06)",
               }}
@@ -460,40 +477,65 @@ export default function TimelinePage() {
                 src={selected.imageUrl}
                 alt={selected.title}
                 loading="lazy"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).style.display = "none";
-                }}
+                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
                 sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
               />
             </Box>
           ) : null}
 
-          <Typography sx={{ mb: 2 }}>{selected?.description || "Sin descripción"}</Typography>
+          <Typography sx={{ mb: 2.5, lineHeight: 1.7 }}>
+            {selected?.description || "Sin descripción."}
+          </Typography>
 
-          <Stack direction="row" spacing={2} sx={{ mb: 1 }}>
-            <Typography variant="body2" color="text.secondary">
-              Inicio: <b>{selected?.startDate}</b>
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Fin: <b>{selected?.endDate || "-"}</b>
-            </Typography>
+          <Stack direction="row" spacing={3} sx={{ mb: 1.5 }}>
+            <Box>
+              <Typography variant="caption" color="text.secondary" fontWeight={700}>
+                INICIO
+              </Typography>
+              <Typography variant="body2" fontWeight={700}>
+                {formatDate(selected?.startDate)}
+              </Typography>
+            </Box>
+            {selected?.endDate && (
+              <Box>
+                <Typography variant="caption" color="text.secondary" fontWeight={700}>
+                  FIN
+                </Typography>
+                <Typography variant="body2" fontWeight={700}>
+                  {formatDate(selected.endDate)}
+                </Typography>
+              </Box>
+            )}
           </Stack>
 
           {selected?.sourceUrl && (
-            <Typography variant="body2">
-              Fuente:{" "}
-              <a href={selected.sourceUrl} target="_blank" rel="noreferrer">
-                {selected.sourceUrl}
-              </a>
-            </Typography>
+            <Box sx={{ mt: 1.5 }}>
+              <Typography variant="caption" color="text.secondary" fontWeight={700}>
+                FUENTE
+              </Typography>
+              <Box>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  endIcon={<OpenInNewIcon fontSize="small" />}
+                  href={selected.sourceUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  component="a"
+                  sx={{ mt: 0.5 }}
+                >
+                  Ver fuente
+                </Button>
+              </Box>
+            </Box>
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setViewOpen(false)}>Cerrar</Button>
           <Button color="error" onClick={openDeleteFromView}>
-            Borrar
+            Eliminar
           </Button>
-          <Button variant="contained" onClick={openEditFromView}>
+          <Button onClick={() => setViewOpen(false)}>Cerrar</Button>
+          <Button variant="contained" startIcon={<EditIcon />} onClick={openEditFromView}>
             Editar
           </Button>
         </DialogActions>
@@ -518,15 +560,20 @@ export default function TimelinePage() {
       />
 
       {/* DELETE */}
-      <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, id: null, title: "" })}>
+      <Dialog
+        open={deleteDialog.open}
+        onClose={() => setDeleteDialog({ open: false, id: null, title: "" })}
+      >
         <DialogTitle sx={{ fontWeight: 950 }}>Confirmar eliminación</DialogTitle>
         <DialogContent dividers>
-          ¿Seguro que quieres borrar <b>{deleteDialog.title}</b>?
+          ¿Seguro que quieres eliminar <b>{deleteDialog.title}</b>? Esta acción no se puede deshacer.
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteDialog({ open: false, id: null, title: "" })}>Cancelar</Button>
+          <Button onClick={() => setDeleteDialog({ open: false, id: null, title: "" })}>
+            Cancelar
+          </Button>
           <Button color="error" variant="contained" onClick={confirmDelete}>
-            Borrar
+            Eliminar
           </Button>
         </DialogActions>
       </Dialog>

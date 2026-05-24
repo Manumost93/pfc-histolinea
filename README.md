@@ -1,80 +1,113 @@
-# HistoLinea (PFC DAM)
+# HistoLinea
 
-Autor: Manuel Honrado Vega
-Grado Superior en Desarrollo de Aplicaciones Multiplataforma
-Universidad Alfonso X el Sabio
-
-HistoLinea es una aplicacion web para gestionar eventos historicos de forma sencilla. La idea es que el proyecto se pueda ejecutar en local, ser facil de usar y quedar bien explicado en la defensa.
+**Autor:** Manuel Honrado Vega  
+**Grado Superior en Desarrollo de Aplicaciones Multiplataforma**  
+**Universidad Alfonso X el Sabio**
 
 ---
 
-## 1. Que hace el proyecto
+HistoLinea es una aplicación web fullstack para gestionar y explorar eventos históricos. Combina un backend en .NET 8 con un frontend en React 19, ofreciendo dos vistas complementarias: una tabla de gestión y una línea de tiempo interactiva.
 
-HistoLinea permite:
-- crear eventos historicos,
-- editar eventos,
-- verlos en una lista ordenada,
-- filtrar por epoca y fechas,
-- explorar los eventos en una linea de tiempo interactiva.
-
-Este proyecto muestra una solucion full-stack con backend en .NET y frontend en React.
+**Demo en Vercel:** [portfolio-kohl-seven-15tnfk4ujq.vercel.app](https://portfolio-kohl-seven-15tnfk4ujq.vercel.app/)
 
 ---
 
-## 2. Tecnologias usadas
+## Funcionalidades
+
+- Crear, editar, visualizar y eliminar eventos históricos
+- **Vista Lista** con tabla paginada, búsqueda rápida y columna de época con color
+- **Vista Timeline** interactiva con zoom y agrupación por era histórica
+- **Estadísticas por época** en el panel de cabecera
+- **Modo oscuro / claro** con toggle en la barra de navegación
+- Filtros por época histórica (Antigua, Medieval, Moderna, Contemporánea) y rango de fechas
+- Preview de imagen y detección automática de época al crear/editar un evento
+- Miniaturas de imagen en la timeline
+- Validaciones en formulario (título, fechas, URLs)
+- Diseño tipo pergamino/museo con tema personalizado en tonos cuero
+
+---
+
+## Tecnologías
 
 ### Backend
 - ASP.NET Core Web API (.NET 8)
 - Entity Framework Core 8
-- SQLite local
+- SQLite (desarrollo local)
 - Swagger en modo Development
 
 ### Frontend
 - React 19 + TypeScript
 - Vite 5
-- Material UI 7
+- Material UI 7 (MUI)
 - MUI DataGrid
 - Axios
 - vis-timeline
 
 ---
 
-## 3. Estructura del proyecto
+## Estructura del proyecto
 
-- backend/
-  - Histolinea.Api/ -> API REST y configuracion
-  - Histolinea.Application/ -> DTOs y validaciones
-  - Histolinea.Domain/ -> entidad principal
-  - Histolinea.Infrastructure/ -> DbContext y migraciones
-- frontend/histolinea-web/ -> aplicacion React
-- docs/ -> documentacion y notas del proyecto
+```
+pfc-histolinea/
+├── backend/
+│   ├── Histolinea.Api/          → API REST, controladores, configuración
+│   ├── Histolinea.Application/  → DTOs y validaciones
+│   ├── Histolinea.Domain/       → Entidad principal HistoricalEvent
+│   └── Histolinea.Infrastructure/ → DbContext y migraciones EF Core
+│
+├── frontend/histolinea-web/     → Aplicación React
+│   └── src/
+│       ├── App.tsx              → Shell con ThemeProvider y modo oscuro
+│       ├── theme.ts             → Tema MUI dinámico (claro / oscuro)
+│       ├── pages/
+│       │   ├── EventsPage.tsx   → Tabla DataGrid con CRUD
+│       │   └── TimelinePage.tsx → Línea de tiempo vis-timeline
+│       ├── components/
+│       │   └── EventDialog.tsx  → Formulario crear/editar con preview de época
+│       └── utils/
+│           └── era.ts           → Clasificación de épocas históricas
+│
+├── docs/                        → Documentación y notas del proyecto
+└── scripts/                     → Scripts de inicio rápido
+```
 
 ---
 
-## 4. Modelo de datos principal
+## Modelo de datos
 
-Entidad: HistoricalEvent
-- Id (Guid)
-- Title (string)
-- Description (string?)
-- StartDate (DateOnly)
-- EndDate (DateOnly?)
-- ImageUrl (string?)
-- SourceUrl (string?)
-- CreatedAtUtc (DateTime)
+**Entidad: `HistoricalEvent`**
+
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `Id` | Guid | Identificador único |
+| `Title` | string | Título del evento (obligatorio, máx. 200 chars) |
+| `Description` | string? | Descripción opcional (máx. 4000 chars) |
+| `StartDate` | DateOnly | Fecha de inicio (obligatoria) |
+| `EndDate` | DateOnly? | Fecha de fin (opcional, >= StartDate) |
+| `ImageUrl` | string? | URL de imagen (máx. 500 chars) |
+| `SourceUrl` | string? | Enlace a fuente bibliográfica |
+| `CreatedAtUtc` | DateTime | Fecha de creación (auto) |
 
 ---
 
-## 5. Requisitos minimos
+## Clasificación de épocas
 
-Necesitas:
+| Época | Rango | Color |
+|---|---|---|
+| Antigua | < 476 d.C. | Verde |
+| Medieval | 476 – 1491 | Marrón |
+| Moderna | 1492 – 1788 | Azul |
+| Contemporánea | >= 1789 | Púrpura |
+
+---
+
+## Requisitos
+
 - .NET SDK 8.x
 - Node.js 20 o superior
 - npm
 
-El proyecto funciona en Windows, macOS y Linux.
-
-### Verificar el entorno
+### Verificar entorno
 
 ```bash
 dotnet --version
@@ -84,19 +117,17 @@ npm --version
 
 ---
 
-## 6. Como iniciar el proyecto rapidamente
+## Inicio rápido
 
-### Script principal
-
-El script más fácil para arrancar todo el proyecto es:
+### Todo en uno (abre 2 terminales separadas)
 
 ```cmd
 scripts\run-all.cmd
 ```
 
-Este comando abre dos ventanas de terminal separadas:
-- `HistoLinea Backend` en `http://localhost:5273`
-- `HistoLinea Frontend` en `http://localhost:5173`
+Arranca:
+- **Backend** en `http://localhost:5273`
+- **Frontend** en `http://localhost:5173`
 
 ### Solo backend
 
@@ -104,22 +135,19 @@ Este comando abre dos ventanas de terminal separadas:
 scripts\run-backend.cmd
 ```
 
-Este script intentará usar `dotnet` desde el PATH y, si no lo encuentra,
-utilizará `%ProgramFiles%\dotnet\dotnet.exe` automáticamente.
-
 ### Solo frontend
 
 ```cmd
 scripts\run-frontend.cmd
 ```
 
-### Reiniciar la base de datos
+### Reiniciar base de datos
 
 ```cmd
 scripts\reset-db.cmd
 ```
 
-### En Linux o macOS
+### En Linux / macOS
 
 ```bash
 ./scripts/run-all.sh
@@ -128,17 +156,14 @@ scripts\reset-db.cmd
 
 ---
 
-## 7. Inicio manual paso a paso
+## Inicio manual paso a paso
 
 ### Backend
 
 ```bash
 cd backend
-
 dotnet restore Histolinea.sln
-
 dotnet ef database update -p src/Histolinea.Infrastructure -s src/Histolinea.Api
-
 dotnet run --project src/Histolinea.Api
 ```
 
@@ -152,97 +177,91 @@ npm run dev
 
 ---
 
-## 8. Configuracion del frontend
+## Configuración del frontend
 
-El frontend puede leer la direccion del backend desde un archivo .env.
+El frontend lee la URL del backend desde un archivo `.env`.
 
-Copia:
-
-```bash
-frontend/histolinea-web/.env.example
-```
-
-a:
+Copia el ejemplo y ajusta si usas otro puerto:
 
 ```bash
-frontend/histolinea-web/.env
+cp frontend/histolinea-web/.env.example frontend/histolinea-web/.env
 ```
-
-Y cambia el valor si usas otro puerto o servidor:
 
 ```env
 VITE_API_URL=http://localhost:5273
 ```
 
-Si no creas .env, el frontend usa http://localhost:5273.
+Sin `.env`, el frontend usa `http://localhost:5273` por defecto.
 
 ---
 
-## 9. Endpoints disponibles
+## Endpoints de la API
 
-- GET /api/Events -> lista de eventos ordenados por fecha de inicio
-- GET /api/Events/{id} -> detalle del evento
-- POST /api/Events -> crear un evento
-- PUT /api/Events/{id} -> actualizar un evento
-- DELETE /api/Events/{id} -> borrar un evento
+| Método | Ruta | Descripción |
+|---|---|---|
+| `GET` | `/api/Events` | Lista de eventos ordenados por fecha |
+| `GET` | `/api/Events/{id}` | Detalle de un evento |
+| `POST` | `/api/Events` | Crear un evento |
+| `PUT` | `/api/Events/{id}` | Actualizar un evento |
+| `DELETE` | `/api/Events/{id}` | Eliminar un evento |
 
----
-
-## 10. Que hace cada parte
-
-### Pagina de eventos
-
-- Lista los eventos con busqueda rapida.
-- Permite filtrar por epoca y fechas.
-- Permite crear, editar y borrar eventos.
-- Incluye un dialogo de detalle con imagen y enlace a la fuente.
-
-### Pagina de timeline
-
-- Muestra los eventos en una linea de tiempo interactiva.
-- Permite hacer zoom con Ctrl + rueda.
-- Incluye botones Fit y Hoy.
-- Permite ver los detalles al hacer clic en un evento.
-- Permite crear y editar eventos desde la misma vista.
-
-### Formulario de evento
-
-Comprueba:
-- titulo obligatorio,
-- fecha de inicio obligatoria,
-- fecha de fin no anterior a fecha de inicio,
-- URLs validas para imagen y fuente.
+Swagger disponible en `http://localhost:5273/swagger` en modo Development.
 
 ---
 
-## 11. Cambios recientes y mejoras
+## Funcionalidad por página
 
-- Anadi VITE_API_URL para que el frontend pueda cambiar la URL del backend sin tocar el codigo.
-- Anadi frontend/histolinea-web/.env.example para facilitar la configuracion.
-- Mejore la validacion del formulario para mostrar errores en cada campo.
-- Quite archivos de plantilla innecesarios en el backend (Class1.cs).
-- Corregi los archivos DTO CreateHistoricalEventDto.cs y UpdateHistoricalEventDto.cs.
-- Anadi .eslintrc.cjs para configuracion basica de lint en el frontend.
-- Mejore la experiencia de la timeline con un mensaje cuando no hay eventos.
-- Cambie index.html para usar lang="es" y mejorar los metadatos.
-- Actualice .gitignore para ignorar node_modules, dist y bases de datos locales.
+### Página de Eventos
+- Lista paginada con búsqueda rápida (DataGrid MUI)
+- **Columna Época** con chip de color clasificando el evento históricamente
+- **Estadísticas por época** en la cabecera (contadores por era)
+- Filtros por época y rango de fechas
+- CRUD completo con diálogos de detalle y confirmación
 
----
+### Página de Timeline
+- Línea de tiempo interactiva (vis-timeline)
+- Zoom con `Ctrl + rueda de ratón`
+- Eventos agrupados por época con **leyenda de colores**
+- Miniaturas de imagen en cada evento
+- Tooltip con vista previa al hacer hover
+- Crear, editar y eliminar desde la misma vista
 
-## 12. Archivos importantes
-
-- backend/src/Histolinea.Api/Program.cs -> configuracion de la API y seed de datos.
-- backend/src/Histolinea.Application/DTOs/CreateHistoricalEventDto.cs -> validacion de creacion.
-- backend/src/Histolinea.Application/DTOs/UpdateHistoricalEventDto.cs -> validacion de edicion.
-- backend/src/Histolinea.Domain/Entities/HistoricalEvent.cs -> modelo principal.
-- backend/src/Histolinea.Infrastructure/Persistence/HistolineaDbContext.cs -> configuracion de EF Core.
-- frontend/histolinea-web/src/App.tsx -> estructura y navegacion.
-- frontend/histolinea-web/src/pages/EventsPage.tsx -> lista y CRUD de eventos.
-- frontend/histolinea-web/src/pages/TimelinePage.tsx -> timeline interactiva.
-- frontend/histolinea-web/src/components/EventDialog.tsx -> formulario de evento.
+### Formulario de Evento
+- **Preview de época** en tiempo real al introducir la fecha de inicio
+- Validaciones: título obligatorio, fecha de inicio obligatoria, fechas consistentes, URLs válidas
+- Preview de imagen antes de guardar
 
 ---
 
-## 13. Estado actual
+## Mejoras incluidas en esta versión
 
-El proyecto esta listo para funcionar en local y presentarse como trabajo de fin de grado. Esta diseñado para ser facil de ejecutar y para mantener un flujo claro de uso.
+- Modo oscuro / claro con toggle en la barra de navegación
+- Tema dinámico que adapta colores de fondo, paper y texto
+- Columna "Época" con chip de color en la tabla de eventos
+- Estadísticas de eventos por época en la cabecera de ambas páginas
+- Leyenda de épocas con chips de color en la vista Timeline
+- Preview de época en el formulario al introducir la fecha de inicio
+- Chip de época en el encabezado de los diálogos de detalle
+- Fechas formateadas en formato `DD/MM/YYYY` en tabla y diálogos
+- Botón "Ver fuente" mejorado con icono de enlace externo
+- Botón "Editar" añadido al diálogo de detalle en la vista Eventos
+- Animaciones suaves de entrada para los paneles (Paper)
+- Scrollbar personalizado con colores del tema
+- Hover de items en la timeline con efecto elevación
+- Logo mejorado en la barra de navegación (icono sobre fondo cuero con gradiente)
+- Footer con nombre del autor, stack tecnológico y enlace a GitHub
+
+---
+
+## Archivos clave
+
+| Archivo | Descripción |
+|---|---|
+| `backend/src/Histolinea.Api/Program.cs` | Configuración API, CORS, seed de datos |
+| `backend/src/Histolinea.Domain/Entities/HistoricalEvent.cs` | Modelo principal |
+| `frontend/histolinea-web/src/App.tsx` | Shell, ThemeProvider, modo oscuro |
+| `frontend/histolinea-web/src/theme.ts` | Función `createAppTheme(mode)` |
+| `frontend/histolinea-web/src/pages/EventsPage.tsx` | Tabla con CRUD |
+| `frontend/histolinea-web/src/pages/TimelinePage.tsx` | Timeline interactiva |
+| `frontend/histolinea-web/src/components/EventDialog.tsx` | Formulario con preview de época |
+| `frontend/histolinea-web/src/utils/era.ts` | Clasificación y colores de épocas |

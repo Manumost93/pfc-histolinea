@@ -1,26 +1,4 @@
-/* Miniaturas de eventos en la timeline: tamaño fijo y uniforme */
-.vis-item .timeline-thumb {
-  width: 48px !important;
-  height: 36px !important;
-  min-width: 48px !important;
-  min-height: 36px !important;
-  max-width: 48px !important;
-  max-height: 36px !important;
-  border-radius: 6px !important;
-  overflow: hidden !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  background: rgba(122,79,42,0.08) !important;
-  border: 1px solid rgba(122,79,42,0.18) !important;
-}
-.vis-item .timeline-thumb img {
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: cover !important;
-  aspect-ratio: 4/3 !important;
-  display: block !important;
-}
+/* ===== Reset básico ===== */
 html, body {
   height: 100%;
 }
@@ -34,41 +12,79 @@ body {
   display: block;
 }
 
-/* ===== Fondo tipo papel con textura sutil ===== */
-.histolinea-bg {
-  background-image:
-    radial-gradient(rgba(122,79,42,0.10) 1px, transparent 1px),
-    linear-gradient(180deg, rgba(255,255,255,0.35), transparent 38%);
-  background-size: 18px 18px, auto;
+/* ===== Animación de entrada suave para Papers ===== */
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-/* ===== vis-timeline “museo” ===== */
+.MuiPaper-root {
+  animation: fadeSlideUp 0.3s ease both;
+}
+
+/* ===== Miniaturas de eventos en la timeline ===== */
+.vis-item .timeline-thumb {
+  width: 48px !important;
+  height: 36px !important;
+  min-width: 48px !important;
+  min-height: 36px !important;
+  max-width: 48px !important;
+  max-height: 36px !important;
+  border-radius: 6px !important;
+  overflow: hidden !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(122, 79, 42, 0.08) !important;
+  border: 1px solid rgba(122, 79, 42, 0.18) !important;
+}
+
+.vis-item .timeline-thumb img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  aspect-ratio: 4/3 !important;
+  display: block !important;
+}
+
+/* ===== vis-timeline estilos "museo" ===== */
 .vis-timeline { border: none !important; }
+
 .vis-panel.vis-center,
 .vis-panel.vis-left,
 .vis-panel.vis-right,
 .vis-panel.vis-top,
-.vis-panel.vis-bottom { border-color: rgba(122,79,42,0.12) !important; }
+.vis-panel.vis-bottom {
+  border-color: rgba(122, 79, 42, 0.12) !important;
+}
 
-.vis-time-axis .vis-grid.vis-minor { border-color: rgba(122,79,42,0.08) !important; }
-.vis-time-axis .vis-grid.vis-major { border-color: rgba(122,79,42,0.14) !important; }
+.vis-time-axis .vis-grid.vis-minor { border-color: rgba(122, 79, 42, 0.08) !important; }
+.vis-time-axis .vis-grid.vis-major { border-color: rgba(122, 79, 42, 0.14) !important; }
 
 .vis-item {
   border-radius: 14px !important;
   border: 1px solid rgba(122, 79, 42, 0.20) !important;
-  background: rgba(255, 255, 255, 0.70) !important;
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.10) !important;
+  background: rgba(255, 255, 255, 0.80) !important;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.09) !important;
   backdrop-filter: blur(6px);
+  transition: transform 0.15s ease, box-shadow 0.15s ease !important;
 }
 
 .vis-item:hover {
-  transform: translateY(-1px);
+  transform: translateY(-2px);
   box-shadow: 0 14px 28px rgba(0, 0, 0, 0.14) !important;
+  z-index: 100 !important;
 }
 
 .vis-item.vis-selected {
   border: 2px solid rgba(122, 79, 42, 0.55) !important;
-  background: rgba(255, 255, 255, 0.85) !important;
+  background: rgba(255, 255, 255, 0.92) !important;
 }
 
 .vis-item-content {
@@ -77,31 +93,78 @@ body {
   color: rgba(20, 20, 20, 0.92);
 }
 
-/* Tooltip bonito */
+/* ===== Tooltip estilo card ===== */
 .vis-tooltip {
   border-radius: 14px !important;
   border: 1px solid rgba(122, 79, 42, 0.20) !important;
-  background: rgba(255, 255, 255, 0.92) !important;
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18) !important;
-  padding: 12px 12px !important;
-  backdrop-filter: blur(8px);
-  max-width: 380px !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.18) !important;
+  padding: 0 !important;
+  backdrop-filter: blur(10px);
+  max-width: 360px !important;
+  overflow: hidden !important;
 }
 
-/* ===== Grupos por época (fondo suave) ===== */
+/* ===== Grupos por época ===== */
 .vis-group { border-color: rgba(122, 79, 42, 0.10) !important; }
+
 .vis-labelset .vis-label {
   border-color: rgba(122, 79, 42, 0.10) !important;
   font-weight: 900;
   color: rgba(55, 35, 18, 0.9);
+  font-size: 13px;
 }
 
-.vis-group.era-ancient, .vis-label.era-ancient { background: rgba(46, 125, 50, 0.06) !important; }
-.vis-group.era-medieval, .vis-label.era-medieval { background: rgba(109, 76, 65, 0.06) !important; }
-.vis-group.era-modern, .vis-label.era-modern { background: rgba(21, 101, 192, 0.06) !important; }
-.vis-group.era-contemporary, .vis-label.era-contemporary { background: rgba(106, 27, 154, 0.06) !important; }
+/* Fondos suaves por época */
+.vis-group.era-ancient,  .vis-label.era-ancient  { background: rgba(46, 125, 50, 0.07) !important; }
+.vis-group.era-medieval, .vis-label.era-medieval { background: rgba(109, 76, 65, 0.07) !important; }
+.vis-group.era-modern,   .vis-label.era-modern   { background: rgba(21, 101, 192, 0.07) !important; }
+.vis-group.era-contemporary, .vis-label.era-contemporary { background: rgba(106, 27, 154, 0.07) !important; }
 
-.vis-item.era-ancient { border-color: rgba(46, 125, 50, 0.35) !important; }
-.vis-item.era-medieval { border-color: rgba(109, 76, 65, 0.40) !important; }
-.vis-item.era-modern { border-color: rgba(21, 101, 192, 0.40) !important; }
-.vis-item.era-contemporary { border-color: rgba(106, 27, 154, 0.40) !important; }
+/* Bordes de items por época */
+.vis-item.era-ancient       { border-color: rgba(46, 125, 50, 0.40) !important; }
+.vis-item.era-medieval      { border-color: rgba(109, 76, 65, 0.45) !important; }
+.vis-item.era-modern        { border-color: rgba(21, 101, 192, 0.45) !important; }
+.vis-item.era-contemporary  { border-color: rgba(106, 27, 154, 0.45) !important; }
+
+/* Barra izquierda de color por época */
+.vis-item.era-ancient.vis-range       { border-left: 4px solid #2e7d32 !important; }
+.vis-item.era-medieval.vis-range      { border-left: 4px solid #6d4c41 !important; }
+.vis-item.era-modern.vis-range        { border-left: 4px solid #1565c0 !important; }
+.vis-item.era-contemporary.vis-range  { border-left: 4px solid #6a1b9a !important; }
+
+/* ===== Dark mode para vis-timeline ===== */
+[data-mode="dark"] .vis-item {
+  background: rgba(38, 26, 16, 0.90) !important;
+  color: rgba(240, 228, 210, 0.95);
+}
+
+[data-mode="dark"] .vis-item-content {
+  color: rgba(240, 228, 210, 0.95);
+}
+
+[data-mode="dark"] .vis-tooltip {
+  background: rgba(38, 26, 16, 0.96) !important;
+  border-color: rgba(122, 79, 42, 0.35) !important;
+  color: rgba(240, 228, 210, 0.95);
+}
+
+[data-mode="dark"] .vis-labelset .vis-label {
+  color: rgba(220, 200, 170, 0.9);
+  background: rgba(30, 20, 12, 0.6) !important;
+}
+
+[data-mode="dark"] .vis-time-axis .vis-text {
+  color: rgba(220, 200, 170, 0.75);
+}
+
+/* ===== Scrollbar personalizado ===== */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(122, 79, 42, 0.30);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(122, 79, 42, 0.55);
+}

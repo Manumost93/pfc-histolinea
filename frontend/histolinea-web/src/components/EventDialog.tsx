@@ -1,16 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  Box,
   Button,
+  Chip,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  Divider,
   Stack,
   TextField,
-  Box,
   Typography,
 } from "@mui/material";
 import type { HistoricalEvent } from "../types/HistoricalEvent";
+import { getEraByStartDate } from "../utils/era";
 
 type Props = {
   open: boolean;
@@ -27,14 +30,16 @@ type Props = {
   }) => Promise<void>;
 };
 
+const ERA_COLORS: Record<string, string> = {
+  ancient: "#2e7d32",
+  medieval: "#6d4c41",
+  modern: "#1565c0",
+  contemporary: "#6a1b9a",
+};
+
 function isValidUrl(s: string) {
   if (!s.trim()) return true;
-  try {
-    new URL(s);
-    return true;
-  } catch {
-    return false;
-  }
+  try { new URL(s); return true; } catch { return false; }
 }
 
 export default function EventDialog({ open, mode, initial, onClose, onSubmit }: Props) {
@@ -58,7 +63,6 @@ export default function EventDialog({ open, mode, initial, onClose, onSubmit }: 
 
   useEffect(() => {
     if (!open) return;
-
     setTitle(initial?.title ?? "");
     setDescription(initial?.description ?? "");
     setStartDate(initial?.startDate ?? "");
@@ -66,6 +70,7 @@ export default function EventDialog({ open, mode, initial, onClose, onSubmit }: 
     setImageUrl(initial?.imageUrl ?? "");
     setSourceUrl(initial?.sourceUrl ?? "");
     setImgOk(true);
+    setErrors({});
   }, [open, initial]);
 
   function toIso(dateOnly: string) {
@@ -76,9 +81,13 @@ export default function EventDialog({ open, mode, initial, onClose, onSubmit }: 
   const imageUrlError = !isValidUrl(imageUrl) ? "URL inválida" : "";
   const sourceUrlError = !isValidUrl(sourceUrl) ? "URL inválida" : "";
 
+  const eraPreview = useMemo(() => {
+    if (!startDate) return null;
+    return getEraByStartDate(startDate);
+  }, [startDate]);
+
   async function handleSave() {
     const nextErrors: typeof errors = {};
-
     if (!title.trim()) nextErrors.title = "El título es obligatorio";
     if (!startDate) nextErrors.startDate = "La fecha de inicio es obligatoria";
     if (imageUrlError) nextErrors.imageUrl = imageUrlError;
@@ -111,10 +120,26 @@ export default function EventDialog({ open, mode, initial, onClose, onSubmit }: 
 
   return (
     <Dialog open={open} onClose={saving ? undefined : onClose} fullWidth maxWidth="sm">
-      <DialogTitle sx={{ fontWeight: 950 }}>{titleText}</DialogTitle>
+      <DialogTitle sx={{ fontWeight: 950, display: "flex", alignItems: "center", gap: 1.5 }}>
+        {titleText}
+        {eraPreview && (
+          <Chip
+            size="small"
+            label={eraPreview.label}
+            sx={{
+              bgcolor: ERA_COLORS[eraPreview.key],
+              color: "#fff",
+              fontWeight: 700,
+              fontSize: 11,
+              ml: "auto",
+            }}
+          />
+        )}
+      </DialogTitle>
 
       <DialogContent>
-        <Stack spacing={2} sx={{ mt: 1 }}>
+        <Stack spacing={2.5} sx={{ mt: 1 }}>
+
           <TextField
             label="Título *"
             value={title}
@@ -166,8 +191,10 @@ export default function EventDialog({ open, mode, initial, onClose, onSubmit }: 
             />
           </Stack>
 
+          <Divider />
+
           <TextField
-            label="Image URL"
+            label="URL de imagen"
             value={imageUrl}
             onChange={(e) => {
               setImageUrl(e.target.value);
@@ -175,7 +202,9 @@ export default function EventDialog({ open, mode, initial, onClose, onSubmit }: 
               setErrors((prev) => ({ ...prev, imageUrl: undefined }));
             }}
             error={!!imageUrlError || !!errors.imageUrl}
-            helperText={errors.imageUrl ?? imageUrlError ?? "Se mostrará una miniatura en la timeline y un banner en detalle."}
+            helperText={
+              errors.imageUrl ?? imageUrlError ?? "Opcional · Se mostrará miniatura en la timeline."
+            }
             fullWidth
           />
 
@@ -210,25 +239,28 @@ export default function EventDialog({ open, mode, initial, onClose, onSubmit }: 
           ) : null}
 
           <TextField
-            label="Source URL"
+            label="URL de fuente"
             value={sourceUrl}
             onChange={(e) => {
               setSourceUrl(e.target.value);
               setErrors((prev) => ({ ...prev, sourceUrl: undefined }));
             }}
             error={!!sourceUrlError || !!errors.sourceUrl}
-            helperText={errors.sourceUrl ?? sourceUrlError ?? "Enlace a Wikipedia, libro, artículo, etc."}
+            helperText={
+              errors.sourceUrl ?? sourceUrlError ?? "Opcional · Wikipedia, libro, artículo, etc."
+            }
             fullWidth
           />
+
         </Stack>
       </DialogContent>
 
-      <DialogActions sx={{ px: 3, pb: 2 }}>
+      <DialogActions sx={{ px: 3, pb: 2.5 }}>
         <Button onClick={onClose} disabled={saving}>
           Cancelar
         </Button>
         <Button onClick={handleSave} variant="contained" disabled={saving}>
-          {mode === "create" ? "Crear" : "Guardar"}
+          {mode === "create" ? "Crear" : "Guardar cambios"}
         </Button>
       </DialogActions>
     </Dialog>

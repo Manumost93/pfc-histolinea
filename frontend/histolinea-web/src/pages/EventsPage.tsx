@@ -29,6 +29,7 @@ import AddIcon from "@mui/icons-material/Add";
 import EventIcon from "@mui/icons-material/Event";
 import SearchIcon from "@mui/icons-material/Search";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import {
   DataGrid,
   GridToolbarContainer,
@@ -60,31 +61,33 @@ function minMaxDates(rows: HistoricalEvent[]) {
   return { min: starts[0], max: ends[ends.length - 1] };
 }
 
+function formatDate(d: string | null | undefined): string {
+  if (!d) return "—";
+  const [y, m, day] = d.split("-");
+  if (!y || !m || !day) return d;
+  return `${day}/${m}/${y}`;
+}
+
 export default function EventsPage() {
   const [rows, setRows] = useState<HistoricalEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Filters
   const [era, setEra] = useState<"all" | EraKey>("all");
   const [from, setFrom] = useState<string>("");
   const [to, setTo] = useState<string>("");
 
-  // Create/Edit dialog
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
   const [selected, setSelected] = useState<HistoricalEvent | null>(null);
 
-  // View dialog
   const [viewOpen, setViewOpen] = useState(false);
 
-  // Delete confirm
   const [deleteDialog, setDeleteDialog] = useState<{
     open: boolean;
     id: string | null;
     title: string;
   }>({ open: false, id: null, title: "" });
 
-  // Snackbar
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
@@ -105,30 +108,24 @@ export default function EventsPage() {
     }
   }
 
-  useEffect(() => {
-    load();
-  }, []);
+  useEffect(() => { load(); }, []);
 
   const filteredRows = useMemo(() => {
     const f = from.trim() || undefined;
     const t = to.trim() || undefined;
-
     return rows.filter((e) => {
       const evEra = getEraByStartDate(e.startDate).key;
       if (era !== "all" && evEra !== era) return false;
-
       if (!overlapsRange({ startDate: e.startDate, endDate: e.endDate, from: f, to: t })) return false;
-
       return true;
     });
   }, [rows, era, from, to]);
 
   const stats = useMemo(() => {
     const { min, max } = minMaxDates(filteredRows);
-    return {
-      count: filteredRows.length,
-      range: min && max ? `${min} → ${max}` : "—",
-    };
+    const byEra: Record<EraKey, number> = { ancient: 0, medieval: 0, modern: 0, contemporary: 0 };
+    filteredRows.forEach((r) => { byEra[getEraByStartDate(r.startDate).key]++; });
+    return { count: filteredRows.length, range: min && max ? `${min} → ${max}` : "—", byEra };
   }, [filteredRows]);
 
   function resetFilters() {
@@ -160,7 +157,6 @@ export default function EventsPage() {
 
   async function confirmDelete() {
     if (!deleteDialog.id) return;
-
     try {
       await http.delete(`/api/Events/${deleteDialog.id}`);
       await load();
@@ -188,7 +184,6 @@ export default function EventsPage() {
         if (!selected) throw new Error("No hay evento seleccionado");
         await http.put(`/api/Events/${selected.id}`, payload);
       }
-
       await load();
       setSnackbar({
         open: true,
@@ -202,32 +197,70 @@ export default function EventsPage() {
     }
   }
 
+  const ERA_COLORS: Record<EraKey, string> = {
+    ancient: "#2e7d32",
+    medieval: "#6d4c41",
+    modern: "#1565c0",
+    contemporary: "#6a1b9a",
+  };
+
   const columns: GridColDef<HistoricalEvent>[] = [
-    { field: "title", headerName: "Título", flex: 1, minWidth: 280 },
-    { field: "startDate", headerName: "Inicio", width: 140 },
-    { field: "endDate", headerName: "Fin", width: 140 },
+    { field: "title", headerName: "Título", flex: 1, minWidth: 220 },
+    {
+      field: "era",
+      headerName: "Época",
+      width: 150,
+      sortable: false,
+      filterable: false,
+      renderCell: (params) => {
+        const eraInfo = getEraByStartDate(params.row.startDate);
+        return (
+          <Chip
+            size="small"
+            label={eraInfo.label}
+            sx={{
+              bgcolor: ERA_COLORS[eraInfo.key],
+              color: "#fff",
+              fontWeight: 700,
+              fontSize: 11,
+              height: 24,
+            }}
+          />
+        );
+      },
+    },
+    {
+      field: "startDate",
+      headerName: "Inicio",
+      width: 120,
+      renderCell: (params) => formatDate(params.value as string),
+    },
+    {
+      field: "endDate",
+      headerName: "Fin",
+      width: 120,
+      renderCell: (params) => formatDate(params.value as string | null),
+    },
     {
       field: "actions",
       headerName: "Acciones",
-      width: 170,
+      width: 130,
       sortable: false,
       filterable: false,
       renderCell: (params) => (
-        <Stack direction="row" spacing={1}>
-          <Tooltip title="Ver">
+        <Stack direction="row" spacing={0.5}>
+          <Tooltip title="Ver detalles">
             <IconButton size="small" onClick={() => openView(params.row)}>
               <VisibilityIcon fontSize="small" />
             </IconButton>
           </Tooltip>
-
           <Tooltip title="Editar">
             <IconButton size="small" onClick={() => openEdit(params.row)}>
               <EditIcon fontSize="small" />
             </IconButton>
           </Tooltip>
-
-          <Tooltip title="Borrar">
-            <IconButton size="small" onClick={() => openDelete(params.row)}>
+          <Tooltip title="Eliminar">
+            <IconButton size="small" color="error" onClick={() => openDelete(params.row)}>
               <DeleteIcon fontSize="small" />
             </IconButton>
           </Tooltip>
@@ -238,35 +271,38 @@ export default function EventsPage() {
 
   const hasActiveFilters = era !== "all" || !!from.trim() || !!to.trim();
 
+  const selectedEra = selected ? getEraByStartDate(selected.startDate) : null;
+
   return (
     <Box sx={{ width: "100%" }}>
-      {/* Hero */}
+
+      {/* Cabecera */}
       <Paper sx={{ p: { xs: 2, sm: 3 }, mb: 3 }}>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ sm: "center" }}>
-          <Stack direction="row" spacing={1.2} alignItems="center" sx={{ flex: 1 }}>
+          <Stack direction="row" spacing={1.5} alignItems="center" sx={{ flex: 1 }}>
             <Box
               sx={{
-                width: 44,
-                height: 44,
+                width: 46,
+                height: 46,
                 borderRadius: 3,
                 display: "grid",
                 placeItems: "center",
-                bgcolor: "rgba(122,79,42,0.10)",
-                border: "1px solid rgba(122,79,42,0.18)",
+                background: "linear-gradient(135deg, rgba(122,79,42,0.12), rgba(122,79,42,0.20))",
+                border: "1px solid rgba(122,79,42,0.20)",
               }}
             >
-              <EventIcon />
+              <EventIcon sx={{ color: "primary.main" }} />
             </Box>
             <Box>
               <Typography variant="h4">Eventos</Typography>
               <Typography variant="body2" color="text.secondary">
-                Gestiona tu colección y explórala en timeline.
+                Gestiona tu colección y explórala en la timeline.
               </Typography>
             </Box>
           </Stack>
 
           <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-            <Chip label={`${stats.count} eventos`} />
+            <Chip label={`${stats.count} evento${stats.count !== 1 ? "s" : ""}`} />
             <Chip variant="outlined" label={`Rango: ${stats.range}`} />
             <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
               Crear
@@ -274,9 +310,28 @@ export default function EventsPage() {
           </Stack>
         </Stack>
 
+        {/* Stats por era */}
+        {stats.count > 0 && (
+          <Stack direction="row" spacing={1} sx={{ mt: 2 }} flexWrap="wrap">
+            {(Object.entries(stats.byEra) as [EraKey, number][])
+              .filter(([, c]) => c > 0)
+              .map(([key, count]) => {
+                const label = ERA_OPTIONS.find((o) => o.value === key)?.label ?? key;
+                return (
+                  <Chip
+                    key={key}
+                    size="small"
+                    label={`${label}: ${count}`}
+                    sx={{ bgcolor: ERA_COLORS[key], color: "#fff", fontWeight: 700, fontSize: 11 }}
+                  />
+                );
+              })}
+          </Stack>
+        )}
+
         <Divider sx={{ my: 2 }} />
 
-        {/* Filters */}
+        {/* Filtros */}
         <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ sm: "center" }}>
           <FormControl size="small" sx={{ minWidth: 200 }}>
             <InputLabel>Época</InputLabel>
@@ -332,6 +387,7 @@ export default function EventsPage() {
         )}
       </Paper>
 
+      {/* DataGrid */}
       <Paper sx={{ p: 2 }}>
         <DataGrid
           rows={filteredRows}
@@ -340,25 +396,24 @@ export default function EventsPage() {
           loading={loading}
           slots={{ toolbar: CustomToolbar }}
           pageSizeOptions={[5, 10, 25]}
-          initialState={{
-            pagination: { paginationModel: { pageSize: 10, page: 0 } },
-          }}
+          initialState={{ pagination: { paginationModel: { pageSize: 10, page: 0 } } }}
           sx={{
             border: "none",
             "& .MuiDataGrid-columnHeaders": { fontWeight: 900 },
             "& .MuiDataGrid-row:hover": { backgroundColor: "rgba(122,79,42,0.05)" },
+            "& .MuiDataGrid-cell": { alignItems: "center" },
           }}
         />
 
         {!loading && filteredRows.length === 0 && (
-          <Stack alignItems="center" py={5} spacing={1}>
-            <EventIcon sx={{ fontSize: 44, opacity: 0.35 }} />
-            <Typography color="text.secondary">
+          <Stack alignItems="center" py={6} spacing={1.5}>
+            <EventIcon sx={{ fontSize: 52, opacity: 0.25 }} />
+            <Typography variant="h6" sx={{ opacity: 0.6 }}>
               No hay eventos para estos filtros
             </Typography>
             <Stack direction="row" spacing={1}>
               <Button variant="outlined" onClick={resetFilters} disabled={!hasActiveFilters}>
-                Reset filtros
+                Limpiar filtros
               </Button>
               <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
                 Crear evento
@@ -379,15 +434,39 @@ export default function EventsPage() {
 
       {/* VIEW */}
       <Dialog open={viewOpen} onClose={() => setViewOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle sx={{ fontWeight: 900 }}>{selected?.title}</DialogTitle>
+        <DialogTitle
+          sx={{
+            fontWeight: 900,
+            display: "flex",
+            alignItems: "center",
+            gap: 1.5,
+            pb: 1,
+          }}
+        >
+          {selected?.title}
+          {selectedEra && (
+            <Chip
+              size="small"
+              label={selectedEra.label}
+              sx={{
+                bgcolor: ERA_COLORS[selectedEra.key],
+                color: "#fff",
+                fontWeight: 700,
+                fontSize: 11,
+                ml: "auto",
+                flexShrink: 0,
+              }}
+            />
+          )}
+        </DialogTitle>
         <DialogContent dividers>
           {selected?.imageUrl ? (
             <Box
               sx={{
                 width: "100%",
-                height: 280,
+                height: 260,
                 borderRadius: 2,
-                mb: 2,
+                mb: 2.5,
                 overflow: "hidden",
                 border: "1px solid rgba(122,79,42,0.15)",
                 bgcolor: "rgba(122,79,42,0.06)",
@@ -398,35 +477,63 @@ export default function EventsPage() {
                 src={selected.imageUrl}
                 alt={selected.title}
                 loading="lazy"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).style.display = "none";
-                }}
+                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
                 sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
               />
             </Box>
           ) : null}
 
-          <Typography sx={{ mb: 2 }}>{selected?.description || "Sin descripción"}</Typography>
+          <Typography sx={{ mb: 2.5, lineHeight: 1.7 }}>
+            {selected?.description || "Sin descripción."}
+          </Typography>
 
-          <Stack direction="row" spacing={2} sx={{ mb: 1 }}>
-            <Typography variant="body2" color="text.secondary">
-              Inicio: <b>{selected?.startDate}</b>
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Fin: <b>{selected?.endDate || "-"}</b>
-            </Typography>
+          <Stack direction="row" spacing={3} sx={{ mb: 1.5 }}>
+            <Box>
+              <Typography variant="caption" color="text.secondary" fontWeight={700}>
+                INICIO
+              </Typography>
+              <Typography variant="body2" fontWeight={700}>
+                {formatDate(selected?.startDate)}
+              </Typography>
+            </Box>
+            {selected?.endDate && (
+              <Box>
+                <Typography variant="caption" color="text.secondary" fontWeight={700}>
+                  FIN
+                </Typography>
+                <Typography variant="body2" fontWeight={700}>
+                  {formatDate(selected.endDate)}
+                </Typography>
+              </Box>
+            )}
           </Stack>
 
           {selected?.sourceUrl && (
-            <Typography variant="body2">
-              Fuente:{" "}
-              <a href={selected.sourceUrl} target="_blank" rel="noreferrer">
-                {selected.sourceUrl}
-              </a>
-            </Typography>
+            <Box sx={{ mt: 1.5 }}>
+              <Typography variant="caption" color="text.secondary" fontWeight={700}>
+                FUENTE
+              </Typography>
+              <Box>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  endIcon={<OpenInNewIcon fontSize="small" />}
+                  href={selected.sourceUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  component="a"
+                  sx={{ mt: 0.5 }}
+                >
+                  Ver fuente
+                </Button>
+              </Box>
+            </Box>
           )}
         </DialogContent>
         <DialogActions>
+          <Button onClick={() => { setViewOpen(false); openEdit(selected!); }} startIcon={<EditIcon />}>
+            Editar
+          </Button>
           <Button onClick={() => setViewOpen(false)}>Cerrar</Button>
         </DialogActions>
       </Dialog>
@@ -438,14 +545,14 @@ export default function EventsPage() {
       >
         <DialogTitle sx={{ fontWeight: 900 }}>Confirmar eliminación</DialogTitle>
         <DialogContent dividers>
-          ¿Seguro que quieres borrar <b>{deleteDialog.title}</b>?
+          ¿Seguro que quieres eliminar <b>{deleteDialog.title}</b>? Esta acción no se puede deshacer.
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDeleteDialog({ open: false, id: null, title: "" })}>
             Cancelar
           </Button>
           <Button color="error" variant="contained" onClick={confirmDelete}>
-            Borrar
+            Eliminar
           </Button>
         </DialogActions>
       </Dialog>
